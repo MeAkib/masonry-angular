@@ -1,0 +1,38 @@
+{
+  "name": "masonry-angular",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "npm run build:lib && ng serve demo",
+    "build": "npm run build:lib && ng build demo",
+    "build:lib": "ng build masonry-angular",
+    "watch:lib": "ng build masonry-angular --watch",
+    "test": "ng test masonry-angular",
+    "test:watch": "ng test masonry-angular --watch",
+    "format": "prettier --write \"projects/**/*.{ts,html,css,json}\"",
+    "pack:lib": "npm run build:lib && npm pack ./dist/masonry-angular",
+    "size": "npm run build:lib && node scripts/bundle-size.mjs"
+  },
+  "private": true,
+  "packageManager": "npm@11.12.1",
+  "dependencies": {
+    "@angular/common": "^22.0.0",
+    "@angular/compiler": "^22.0.0",
+    "@angular/core": "^22.0.0",
+    "@angular/forms": "^22.0.0",
+    "@angular/platform-browser": "^22.0.0",
+    "@angular/router": "^22.0.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.1.7",
+    "@angular/cli": "^22.0.5",
+    "@angular/compiler-cli": "^22.0.0",
+    "jsdom": "^28.0.0",
+    "ng-packagr": "^22.1.0",
+    "prettier": "^3.8.1",
+    "typescript": "~6.0.2",
+    "vitest": "^4.0.8"
+  }
+}

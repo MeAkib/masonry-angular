@@ -1,0 +1,27 @@
+{
+  "name": "masonry-angular",
+  "version": "1.0.0",
+  "description": "Zero-dependency masonry layout for Angular. Signal-based, zoneless, SSR-safe.",
+  "keywords": [
+    "angular",
+    "masonry",
+    "masonry-layout",
+    "grid",
+    "masonry-grid",
+    "cascading-grid",
+    "waterfall",
+    "layout",
+    "signals",
+    "zoneless",
+    "ssr"
+  ],
+  "license": "MIT",
+  "sideEffects": false,
+  "peerDependencies": {
+    "@angular/common": "^22.0.0",
+    "@angular/core": "^22.0.0"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  }
+}

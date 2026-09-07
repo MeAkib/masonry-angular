@@ -1,0 +1,16 @@
+<header class="masthead">
+  <div>
+    <h1>masonry-angular</h1>
+    <p>Zero-dependency masonry for Angular — signal-based, zoneless and SSR-safe.</p>
+  </div>
+
+  <nav>
+    @for (example of examples; track example.path) {
+      <a [routerLink]="example.path" routerLinkActive="active">{{ example.label }}</a>
+    }
+  </nav>
+</header>
+
+<main>
+  <router-outlet />
+</main>

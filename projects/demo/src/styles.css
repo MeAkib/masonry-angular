@@ -1,0 +1,229 @@
+:root {
+  --bg: #f7f7f8;
+  --panel: #ffffff;
+  --line: #e2e2e6;
+  --text: #1b1b20;
+  --muted: #6b6b76;
+  --accent: #5b5bd6;
+  --btn: #f2f2f5;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16161a;
+    --panel: #1e1e24;
+    --line: #2e2e37;
+    --text: #ececf1;
+    --muted: #9a9aa8;
+    --accent: #8f8ff0;
+    --btn: #26262e;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
+/* ---- Shared example chrome ------------------------------------------------ */
+
+.lede {
+  max-width: 68ch;
+  margin: 0 0 22px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.lede code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--btn);
+  font-size: 0.88em;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 26px;
+}
+
+.controls fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 0;
+  padding: 10px 14px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.controls legend {
+  padding: 0 6px;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.controls label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+button {
+  padding: 5px 11px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--btn);
+  color: inherit;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+input[type='range'] {
+  width: 150px;
+  accent-color: var(--accent);
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  margin: 0;
+  padding: 12px 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.stats div {
+  display: grid;
+  gap: 2px;
+}
+
+.stats dt {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.stats dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* ---- Shared item styling -------------------------------------------------- */
+
+.card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+
+.card img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 16px;
+  border-top: 3px solid hsl(var(--hue) 70% 55%);
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.badge {
+  align-self: flex-start;
+  margin-top: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: hsl(var(--hue) 70% 55% / 0.18);
+  color: hsl(var(--hue) 70% 42%);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+@media (prefers-color-scheme: dark) {
+  .badge {
+    color: hsl(var(--hue) 80% 74%);
+  }
+}
+
+.tile {
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: hsl(var(--hue) 55% 55% / 0.22);
+  border: 1px solid hsl(var(--hue) 55% 55% / 0.4);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stamps are positioned by the author; the grid only measures where they land. */
+.stamp {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  display: grid;
+  gap: 6px;
+  width: min(320px, 60%);
+  padding: 18px;
+  border: 1px dashed var(--accent);
+  border-radius: 12px;
+  background: var(--panel);
+  font-size: 0.85rem;
+}
+
+.stamp span {
+  color: var(--muted);
+}

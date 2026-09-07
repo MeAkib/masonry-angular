@@ -1,0 +1,54 @@
+:host {
+  display: block;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 32px 24px 96px;
+}
+
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-bottom: 18px;
+  margin-bottom: 26px;
+  border-bottom: 1px solid var(--line);
+}
+
+.masthead h1 {
+  margin: 0 0 6px;
+  font-size: 1.55rem;
+}
+
+.masthead p {
+  margin: 0;
+  color: var(--muted);
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+nav a {
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+nav a:hover {
+  color: var(--text);
+  background: var(--btn);
+}
+
+nav a.active {
+  border-color: var(--line);
+  background: var(--panel);
+  color: var(--accent);
+  font-weight: 600;
+}
