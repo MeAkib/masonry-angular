@@ -15,6 +15,16 @@
     "zoneless",
     "ssr"
   ],
+  "homepage": "https://github.com/MeAkib/masonry-angular#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MeAkib/masonry-angular.git",
+    "directory": "projects/masonry-angular"
+  },
+  "bugs": {
+    "url": "https://github.com/MeAkib/masonry-angular/issues"
+  },
+  "author": "MeAkib",
   "license": "MIT",
   "sideEffects": false,
   "peerDependencies": {

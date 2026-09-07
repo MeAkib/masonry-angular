@@ -21,17 +21,19 @@ at once, run `npm run watch:lib` in a second terminal.
 
 ## Scripts
 
-|                      |                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------ |
-| `npm start`          | Build the library and serve the examples.                                                  |
-| `npm run build:lib`  | Build the publishable package into `dist/masonry-angular`.                                 |
-| `npm run watch:lib`  | Rebuild the library on change.                                                             |
-| `npm test`           | Run the library test suite (vitest + jsdom).                                               |
-| `npm run test:watch` | Same, in watch mode.                                                                       |
-| `npm run build`      | Build the library and a production bundle of the examples.                                 |
-| `npm run pack:lib`   | Build and `npm pack` the package, to inspect what would publish.                           |
-| `npm run size`       | Measure the shipped bundle against `ngx-masonry`, `angular2-masonry` and `masonry-layout`. |
-| `npm run format`     | Prettier over both projects.                                                               |
+|                       |                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------ |
+| `npm start`           | Build the library and serve the examples.                                                  |
+| `npm run build:lib`   | Build the publishable package into `dist/masonry-angular`.                                 |
+| `npm run watch:lib`   | Rebuild the library on change.                                                             |
+| `npm test`            | Run the library test suite (vitest + jsdom).                                               |
+| `npm run test:watch`  | Same, in watch mode.                                                                       |
+| `npm run build`       | Build the library and a production bundle of the examples.                                 |
+| `npm run pack:lib`    | Build and `npm pack` the package, to inspect what would publish.                           |
+| `npm run release:dry` | Test, build, and show what `npm publish` would send.                                       |
+| `npm run release`     | Test, build, and publish `dist/masonry-angular`.                                           |
+| `npm run size`        | Measure the shipped bundle against `ngx-masonry`, `angular2-masonry` and `masonry-layout`. |
+| `npm run format`      | Prettier over both projects.                                                               |
 
 ## Layout of the library
 
@@ -82,6 +84,26 @@ the multi-pass measurement behaviour deterministic to assert.
 ## Publishing
 
 ```bash
-npm run build:lib
-npm publish dist/masonry-angular
+npm run release:dry   # test, build, and print exactly what would publish
+npm run release       # test, build, and publish dist/masonry-angular
+```
+
+Only `dist/masonry-angular` is publishable. ng-packagr writes the manifest that consumers
+need there — `exports`, the FESM bundle, the type definitions, and Angular as a _peer_
+dependency — and copies the library README as the npm page.
+
+Never run `npm publish` from the workspace root. This manifest describes the workspace, not
+the package: it lists Angular as a runtime dependency and declares no entry point, so what
+lands on npm cannot be imported and rewrites the dependency tree of whoever installs it.
+`"private": true` is here to make that mistake impossible; leave it in place.
+
+The version that matters is the one in `projects/masonry-angular/package.json`. The root
+stays at `0.0.0`.
+
+```bash
+cd projects/masonry-angular
+npm version minor       # bumps the manifest, commits, tags
+cd ../..
+npm run release
+git push --follow-tags
 ```
