@@ -7,6 +7,9 @@
  * `../schemas/defaults`.
  */
 export type {
+  MasonryBreakpointKey,
+  MasonryBreakpointName,
+  MasonryBreakpointScale,
   MasonryBreakpoints,
   MasonryEntryAnimation,
   MasonryExitAnimation,

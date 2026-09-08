@@ -22,7 +22,7 @@ export { MasonryLayoutEngine } from './lib/core/layout-engine';
 export { resolveColumnGeometry, resolveFallbackColumns } from './lib/core/column-resolver';
 export { FrameScheduler } from './lib/core/scheduler';
 
-export { DEFAULT_MASONRY_GRID_OPTIONS } from './lib/schemas/defaults';
+export { DEFAULT_MASONRY_BREAKPOINTS, DEFAULT_MASONRY_GRID_OPTIONS } from './lib/schemas/defaults';
 export {
   MasonryGridOptionsError,
   masonryOptionsEqual,
@@ -33,6 +33,9 @@ export {
 // Every data shape the library defines. Types only — nothing here has a
 // runtime representation.
 export type {
+  MasonryBreakpointKey,
+  MasonryBreakpointName,
+  MasonryBreakpointScale,
   MasonryBreakpoints,
   MasonryEntryAnimation,
   MasonryExitAnimation,

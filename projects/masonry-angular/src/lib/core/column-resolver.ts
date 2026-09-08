@@ -1,32 +1,66 @@
 import type { ResolvedColumnGeometry } from '../models/geometry';
-import type { ResolvedMasonryGridOptions } from '../models/options';
+import type {
+  MasonryBreakpointScale,
+  MasonryBreakpoints,
+  ResolvedMasonryGridOptions,
+} from '../models/options';
 
 /** Column count fixed when neither `columns` nor `columnWidth` is configured. */
 const DEFAULT_COLUMN_COUNT = 3;
 
-/** Breakpoint keys are parsed once per map object and cached by identity. */
-const sortedBreakpointCache = new WeakMap<object, readonly number[]>();
+/** A breakpoint resolved to `[minimum width in px, column count]`. */
+type Stop = readonly [width: number, columns: number];
 
-function sortedBreakpoints(map: Record<number, number>): readonly number[] {
-  let sorted = sortedBreakpointCache.get(map);
-  if (!sorted) {
-    sorted = Object.keys(map)
-      .map(Number)
-      .sort((a, b) => a - b);
-    sortedBreakpointCache.set(map, sorted);
+interface CachedStops {
+  /** The scale the stops were resolved against, compared by identity. */
+  readonly scale: MasonryBreakpointScale;
+  readonly stops: readonly Stop[];
+}
+
+/**
+ * Resolved stops are cached per map object, so a `columns` literal costs one
+ * parse and sort for its lifetime rather than one per layout pass. The scale is
+ * held alongside because a name means nothing without it: if the `breakpoints`
+ * option changes, the cached stops are stale and are rebuilt.
+ */
+const stopsCache = new WeakMap<object, CachedStops>();
+
+function resolveStops(map: MasonryBreakpoints, scale: MasonryBreakpointScale): readonly Stop[] {
+  const cached = stopsCache.get(map);
+  if (cached && cached.scale === scale) return cached.stops;
+
+  const stops: Stop[] = [];
+  for (const [key, count] of Object.entries(map)) {
+    if (count === undefined) continue;
+    // A key is either a width in px or a name in the scale. Unknown names are
+    // dropped here and reported by the development-mode validator.
+    const width = key.trim() !== '' && Number.isFinite(Number(key)) ? Number(key) : scale[key];
+    if (width === undefined) continue;
+    stops.push([width, count]);
   }
-  return sorted;
+  stops.sort((a, b) => a[0] - b[0]);
+
+  stopsCache.set(map, { scale, stops });
+  return stops;
 }
 
 /** The column count for the largest breakpoint at or below `width`. */
-function matchBreakpoint(map: Record<number, number>, width: number): number {
-  const breakpoints = sortedBreakpoints(map);
-  let matched = breakpoints[0];
-  for (const breakpoint of breakpoints) {
-    if (breakpoint > width) break;
-    matched = breakpoint;
+function matchBreakpoint(
+  map: MasonryBreakpoints,
+  scale: MasonryBreakpointScale,
+  width: number,
+): number {
+  const stops = resolveStops(map, scale);
+  if (stops.length === 0) return DEFAULT_COLUMN_COUNT;
+
+  // Below the smallest stop, the smallest one still applies — a map that omits
+  // a zero-width entry should not leave narrow containers unstyled.
+  let matched = stops[0]![1];
+  for (const [stopWidth, count] of stops) {
+    if (stopWidth > width) break;
+    matched = count;
   }
-  return matched === undefined ? DEFAULT_COLUMN_COUNT : (map[matched] ?? DEFAULT_COLUMN_COUNT);
+  return matched;
 }
 
 function clampColumns(count: number, options: ResolvedMasonryGridOptions): number {
@@ -70,7 +104,7 @@ export function resolveColumnGeometry(
     typeof options.columns === 'number'
       ? options.columns
       : options.columns !== undefined
-        ? matchBreakpoint(options.columns, basisWidth)
+        ? matchBreakpoint(options.columns, options.breakpoints, basisWidth)
         : DEFAULT_COLUMN_COUNT;
 
   const columns = clampColumns(requested, options);

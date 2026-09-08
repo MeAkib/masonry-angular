@@ -39,6 +39,63 @@ describe('resolveColumnGeometry', () => {
     });
   });
 
+  describe('named breakpoints', () => {
+    const named = options({ columns: { sm: 1, lg: 3, xl: 4 }, gutter: 0 });
+
+    it('resolves names through the default scale', () => {
+      expect(resolveColumnGeometry(700, 700, named).columns).toBe(1);
+      expect(resolveColumnGeometry(1024, 1024, named).columns).toBe(3);
+      expect(resolveColumnGeometry(1400, 1400, named).columns).toBe(4);
+    });
+
+    it('orders names by width, not by declaration order', () => {
+      const shuffled = options({ columns: { xl: 4, sm: 1, lg: 3 }, gutter: 0 });
+
+      expect(resolveColumnGeometry(1024, 1024, shuffled).columns).toBe(3);
+    });
+
+    it('mixes names and raw widths in one map', () => {
+      const mixed = options({ columns: { xs: 1, md: 2, 1440: 5 }, gutter: 0 });
+
+      expect(resolveColumnGeometry(400, 400, mixed).columns).toBe(1);
+      expect(resolveColumnGeometry(800, 800, mixed).columns).toBe(2);
+      expect(resolveColumnGeometry(1500, 1500, mixed).columns).toBe(5);
+    });
+
+    it('honours an overridden scale', () => {
+      const custom = options({
+        breakpoints: { lg: 900 },
+        columns: { sm: 1, lg: 3 },
+        gutter: 0,
+      });
+
+      // `lg` now means 900, while `sm` keeps its default 640.
+      expect(resolveColumnGeometry(700, 700, custom).columns).toBe(1);
+      expect(resolveColumnGeometry(900, 900, custom).columns).toBe(3);
+    });
+
+    it('accepts names an application added to the scale', () => {
+      const custom = options({
+        breakpoints: { tablet: 820 },
+        columns: { xs: 1, tablet: 2 },
+        gutter: 0,
+      });
+
+      expect(resolveColumnGeometry(700, 700, custom).columns).toBe(1);
+      expect(resolveColumnGeometry(900, 900, custom).columns).toBe(2);
+    });
+
+    it('rebuilds cached stops when the scale changes', () => {
+      // The same `columns` object under two scales must not reuse one result.
+      const columns = { sm: 1, lg: 3 };
+      const wide = options({ columns, breakpoints: { lg: 1400 }, gutter: 0 });
+      const narrow = options({ columns, breakpoints: { lg: 700 }, gutter: 0 });
+
+      expect(resolveColumnGeometry(1000, 1000, wide).columns).toBe(1);
+      expect(resolveColumnGeometry(1000, 1000, narrow).columns).toBe(3);
+    });
+  });
+
   describe('columnWidth', () => {
     it('derives the count from how many columns fit', () => {
       const geometry = resolveColumnGeometry(640, 640, options({ columnWidth: 200, gutter: 20 }));

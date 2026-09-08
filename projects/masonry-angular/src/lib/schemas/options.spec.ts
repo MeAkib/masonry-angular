@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MasonryGridOptions, MasonryOptionIssue } from '../models';
-import { DEFAULT_MASONRY_GRID_OPTIONS } from './defaults';
+import { DEFAULT_MASONRY_BREAKPOINTS, DEFAULT_MASONRY_GRID_OPTIONS } from './defaults';
 import {
   MasonryGridOptionsError,
   masonryOptionsEqual,
@@ -158,6 +158,49 @@ describe('parseMasonryGridOptions', () => {
     it('accepts a valid breakpoint map', () => {
       expect(isValid({ columns: { 0: 1, 768: 2, 1200: 4 } })).toBe(true);
     });
+  });
+});
+
+describe('breakpoints', () => {
+  it('merges an override over the default scale rather than replacing it', () => {
+    const resolved = parseMasonryGridOptions({ breakpoints: { lg: 900 } });
+
+    expect(resolved.breakpoints).toEqual({ ...DEFAULT_MASONRY_BREAKPOINTS, lg: 900 });
+  });
+
+  it('leaves the shared default scale untouched', () => {
+    parseMasonryGridOptions({ breakpoints: { lg: 900 } });
+
+    expect(DEFAULT_MASONRY_BREAKPOINTS['lg']).toBe(1024);
+  });
+
+  it('accepts every built-in name as a `columns` key', () => {
+    for (const name of Object.keys(DEFAULT_MASONRY_BREAKPOINTS)) {
+      expect(isValid({ columns: { [name]: 2 } })).toBe(true);
+    }
+  });
+
+  it('accepts a name the application added to the scale', () => {
+    expect(isValid({ breakpoints: { tablet: 820 }, columns: { tablet: 2 } })).toBe(true);
+  });
+
+  it('rejects an unknown name, naming the ones that exist', () => {
+    const [issue] = issuesFor({ columns: { enormous: 4 } });
+
+    expect(issue?.path).toBe('columns.enormous');
+    expect(issue?.message).toContain("Unknown breakpoint 'enormous'");
+    expect(issue?.message).toContain('`lg`');
+    expect(issue?.message).toContain('`breakpoints`');
+  });
+
+  it('still rejects a malformed numeric key', () => {
+    expect(issuesFor({ columns: { '-10': 2 } })[0]?.path).toBe('columns.-10');
+    expect(issuesFor({ columns: { 12.5: 2 } })[0]?.path).toBe('columns.12.5');
+  });
+
+  it('rejects a scale entry that is not a whole non-negative number', () => {
+    expect(issuesFor({ breakpoints: { sm: -1 } })[0]?.path).toBe('breakpoints.sm');
+    expect(issuesFor({ breakpoints: { sm: 12.5 } })[0]?.path).toBe('breakpoints.sm');
   });
 });
 

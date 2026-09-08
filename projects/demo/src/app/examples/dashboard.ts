@@ -30,6 +30,13 @@ import { DashboardWidget } from './dashboard-widget';
       from the skeletons, and the real content lands in exactly the same box.
     </p>
 
+    <p class="lede">
+      Tiles are wider than article cards, so this board also redefines what the breakpoint names
+      mean — <code>breakpoints: &#123; sm: 620, md: 980, … &#125;</code> — while
+      <code>columns</code> still reads as <code>&#123; xs: 1, sm: 2, md: 3, … &#125;</code>. The
+      override merges over the defaults and is scoped to this grid.
+    </p>
+
     <section class="controls">
       <fieldset>
         <legend>packing</legend>
@@ -104,7 +111,11 @@ export class DashboardExample {
   readonly maxColumns = signal(4);
 
   readonly options = computed<MasonryGridOptions>(() => ({
-    columns: { 0: 1, 620: 2, 980: 3, 1320: 4, 1680: 5, 2000: 6 },
+    // Tiles are wider than article cards, so this board wants its own scale.
+    // `breakpoints` merges over the defaults, so the names keep their meaning
+    // everywhere else in the app — only this grid reads them differently.
+    breakpoints: { sm: 620, md: 980, lg: 1320, xl: 1680, '2xl': 2000 },
+    columns: { xs: 1, sm: 2, md: 3, lg: 4, xl: 5, '2xl': 6 },
     maxColumns: this.maxColumns(),
     gutter: this.dense() ? 8 : 16,
     horizontalOrder: this.horizontalOrder(),

@@ -16,7 +16,9 @@ type SizingMode = 'breakpoints' | 'fixed' | 'columnWidth';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p class="lede">
-      Column count follows the container width through a breakpoint map. Cards with images are held
+      Column count follows the container width through a breakpoint map —
+      <code>&#123; xs: 1, sm: 2, md: 3, xl: 4, '2xl': 5 &#125;</code>, named against the default
+      scale, and matched against this panel rather than the viewport. Cards with images are held
       back until <code>decode()</code> resolves, so they never land at the wrong height and shove
       their neighbours around.
     </p>
@@ -145,7 +147,7 @@ export class GalleryExample {
       case 'columnWidth':
         return { columnWidth: 260 };
       default:
-        return { columns: { 0: 1, 560: 2, 900: 3, 1280: 4, 1700: 5 } };
+        return { columns: { xs: 1, sm: 2, md: 3, xl: 4, '2xl': 5 } };
     }
   }
 }

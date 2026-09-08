@@ -4,7 +4,7 @@ import { NG_MASONRY_GRID, type MasonryGridOptions } from 'masonry-angular';
 import { makeCards, type DemoCard } from './cards';
 
 const OPTIONS: MasonryGridOptions = {
-  columns: { 0: 1, 560: 2, 900: 3, 1280: 4 },
+  columns: { xs: 1, sm: 2, md: 3, xl: 4 },
   gutter: 16,
 };
 

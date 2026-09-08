@@ -4,12 +4,27 @@
  * `parse.ts` fills unset fields from this object, and a test asserts it stays
  * in step with `ResolvedMasonryGridOptions` in `../models/options`.
  */
-import type { ResolvedMasonryGridOptions } from '../models/options';
+import type { MasonryBreakpointScale, ResolvedMasonryGridOptions } from '../models/options';
+
+/**
+ * The named breakpoints, in px. These are the widely used Tailwind values, so a
+ * grid written against `lg` lines up with the rest of a typical application's
+ * responsive design. Override any subset with the `breakpoints` option.
+ */
+export const DEFAULT_MASONRY_BREAKPOINTS: MasonryBreakpointScale = Object.freeze({
+  xs: 0,
+  sm: 640,
+  md: 768,
+  lg: 1024,
+  xl: 1280,
+  '2xl': 1536,
+});
 
 /** Every option at its default value. */
 export const DEFAULT_MASONRY_GRID_OPTIONS: ResolvedMasonryGridOptions = Object.freeze({
   columns: undefined,
   columnWidth: undefined,
+  breakpoints: DEFAULT_MASONRY_BREAKPOINTS,
   stretchColumns: true,
   minColumns: 1,
   maxColumns: undefined,

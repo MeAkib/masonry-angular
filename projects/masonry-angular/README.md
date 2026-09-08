@@ -89,27 +89,40 @@ Every option is optional. These are the common ones — the
 [full reference](https://github.com/MeAkib/masonry-angular/blob/main/projects/masonry-angular/DOCS.md#options)
 documents all of them.
 
-| Option                | Default     |                                                                                                  |
-| --------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
-| `columns`             | `3`         | A fixed count, or counts keyed by the min width they apply at: `{ 0: 1, 768: 2, 1200: 4 }`.      |
-| `columnWidth`         | —           | Target column width in px; the count follows from the space available. Use instead of `columns`. |
-| `gutter`              | `16`        | Gap in px. `gutterX` / `gutterY` override per axis.                                              |
-| `horizontalOrder`     | `false`     | Fill row by row instead of seeking the shortest column. Tidier rows, taller grid.                |
-| `transition.duration` | `300`       | How long items take to slide to a new position. `0` disables it.                                 |
-| `entryAnimation`      | fade + rise | Effect for newly placed items. `false` disables it.                                              |
-| `awaitImages`         | `true`      | Hold an item back until its images have decoded, so it is measured at its real height.           |
-| `contentVisibility`   | `false`     | Let the browser skip rendering off-screen items. Worth turning on past a few hundred.            |
+| Option                | Default        |                                                                                                                               |
+| --------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `columns`             | `3`            | A fixed count, or counts keyed by breakpoint: `{ sm: 1, lg: 3, xl: 4 }`. Raw pixel widths work too, and the two can be mixed. |
+| `breakpoints`         | Tailwind scale | What those names mean, in px. An override merges over the defaults: `{ lg: 900 }` moves `lg` and leaves the rest alone.       |
+| `columnWidth`         | —              | Target column width in px; the count follows from the space available. Use instead of `columns`.                              |
+| `gutter`              | `16`           | Gap in px. `gutterX` / `gutterY` override per axis.                                                                           |
+| `horizontalOrder`     | `false`        | Fill row by row instead of seeking the shortest column. Tidier rows, taller grid.                                             |
+| `transition.duration` | `300`          | How long items take to slide to a new position. `0` disables it.                                                              |
+| `entryAnimation`      | fade + rise    | Effect for newly placed items. `false` disables it.                                                                           |
+| `awaitImages`         | `true`         | Hold an item back until its images have decoded, so it is measured at its real height.                                        |
+| `contentVisibility`   | `false`        | Let the browser skip rendering off-screen items. Worth turning on past a few hundred.                                         |
 
 ```ts
-{ columns: { 0: 1, 640: 2, 1024: 3, 1440: 4 } }  // responsive
-{ columnWidth: 260 }                              // as many 260px columns as fit
+{ columns: { sm: 1, md: 2, lg: 3, xl: 4 } }  // responsive, by name
+{ columns: { 0: 1, 640: 2, 1440: 4 } }       // ...or by raw min-width in px
+{ columnWidth: 260 }                          // as many 260px columns as fit
 ```
+
+The names are the Tailwind scale — `xs` 0, `sm` 640, `md` 768, `lg` 1024, `xl` 1280, `2xl` 1536 —
+and each means "from this width up". The count that applies is the one for the largest breakpoint at
+or below the measured width, and that width is the **container's** by default, not the viewport's.
 
 Set defaults once for the whole application, and let each grid layer its own `[options]` on top:
 
 ```ts
 bootstrapApplication(App, {
-  providers: [provideNgMasonryGrid({ gutter: 24, columns: { 0: 1, 768: 2, 1280: 4 } })],
+  providers: [
+    provideNgMasonryGrid({
+      gutter: 24,
+      columns: { sm: 1, md: 2, xl: 4 },
+      // Optional: make the names match your own design system.
+      breakpoints: { md: 900, xl: 1400 },
+    }),
+  ],
 });
 ```
 

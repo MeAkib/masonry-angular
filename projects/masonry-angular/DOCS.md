@@ -8,6 +8,7 @@ Everything the library exposes, in detail. For installation and the five-minute 
 
 - [Options](#options)
   - [Sizing](#sizing)
+    - [Named breakpoints](#named-breakpoints)
   - [Spacing and direction](#spacing-and-direction)
   - [Motion](#motion)
   - [Loading and scale](#loading-and-scale)
@@ -34,19 +35,51 @@ Every option is optional; the defaults below are what you get from `<masonry-gri
 
 ### Sizing
 
-| Option                      | Type                               | Default       |                                                                                                              |
-| --------------------------- | ---------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------ |
-| `columns`                   | `number \| Record<number, number>` | `3`           | Fixed count, or column counts keyed by the minimum width at which they apply.                                |
-| `columnWidth`               | `number`                           | —             | Target column width in px; the count is derived from the space available. Mutually exclusive with `columns`. |
-| `stretchColumns`            | `boolean`                          | `true`        | With `columnWidth`, grow columns to fill the row instead of leaving a ragged edge.                           |
-| `minColumns` / `maxColumns` | `number`                           | `1` / —       | Clamp the resolved count.                                                                                    |
-| `breakpointBasis`           | `'container' \| 'viewport'`        | `'container'` | What breakpoints are matched against. Container-based works inside sidebars and modals.                      |
-| `fitWidth`                  | `boolean`                          | `false`       | Shrink the grid to the width its columns actually occupy, so it can be centred.                              |
+| Option                      | Type                           | Default        |                                                                                                                |
+| --------------------------- | ------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------- |
+| `columns`                   | `number \| MasonryBreakpoints` | `3`            | Fixed count, or counts keyed by breakpoint name or raw min-width. See [named breakpoints](#named-breakpoints). |
+| `breakpoints`               | `Record<string, number>`       | Tailwind scale | What the names in `columns` mean, in px. Overrides merge over the defaults.                                    |
+| `columnWidth`               | `number`                       | —              | Target column width in px; the count is derived from the space available. Mutually exclusive with `columns`.   |
+| `stretchColumns`            | `boolean`                      | `true`         | With `columnWidth`, grow columns to fill the row instead of leaving a ragged edge.                             |
+| `minColumns` / `maxColumns` | `number`                       | `1` / —        | Clamp the resolved count.                                                                                      |
+| `breakpointBasis`           | `'container' \| 'viewport'`    | `'container'`  | What breakpoints are matched against. Container-based works inside sidebars and modals.                        |
+| `fitWidth`                  | `boolean`                      | `false`        | Shrink the grid to the width its columns actually occupy, so it can be centred.                                |
 
 ```ts
 { columns: { 0: 1, 640: 2, 1024: 3, 1440: 4 } }  // responsive
 { columnWidth: 260 }                              // as many 260px columns as fit
 ```
+
+#### Named breakpoints
+
+`columns` accepts a breakpoint name, a raw minimum width in px, or a mix of the two. Whichever form
+is used, the count that applies is the one for the largest breakpoint at or below the measured
+width — and that width is the container's unless `breakpointBasis: 'viewport'` says otherwise.
+
+```ts
+{ columns: { sm: 1, md: 2, lg: 3, xl: 4 } }   // named
+{ columns: { 0: 1, 640: 2, 1440: 4 } }        // raw widths
+{ columns: { xs: 1, md: 2, 1440: 5 } }        // both
+```
+
+The default scale is Tailwind's, exported as `DEFAULT_MASONRY_BREAKPOINTS`:
+
+| Name | `xs` | `sm`  | `md`  | `lg`   | `xl`   | `2xl`  |
+| ---- | ---- | ----- | ----- | ------ | ------ | ------ |
+| px   | `0`  | `640` | `768` | `1024` | `1280` | `1536` |
+
+`breakpoints` redefines them. It **merges** over the defaults, so naming one does not drop the rest,
+and a name of your own can be added alongside them:
+
+```ts
+provideNgMasonryGrid({
+  breakpoints: { md: 900, tablet: 820 }, // `md` moves, `tablet` is new, the others stand
+  columns: { xs: 1, tablet: 2, md: 3 },
+});
+```
+
+Declaration order does not matter — stops are sorted by width. A name that is not in the scale is a
+validation error in development, and the message lists the names that are available.
 
 ### Spacing and direction
 

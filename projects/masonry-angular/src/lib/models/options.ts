@@ -19,12 +19,34 @@
 /** A single Web Animations API keyframe. */
 export type MasonryKeyframe = Record<string, string | number>;
 
+/** The breakpoint names defined out of the box. */
+export type MasonryBreakpointName = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+
 /**
- * Column counts keyed by the minimum width (px) at which they apply.
- * `{ 0: 1, 640: 2, 1024: 3 }` reads as "one column, two from 640px up, three
- * from 1024px up".
+ * A breakpoint key: a name from the scale, or a raw minimum width in px.
+ *
+ * `string & {}` keeps editor autocomplete for the built-in names while still
+ * accepting any name an application has added to its own `breakpoints` scale.
  */
-export type MasonryBreakpoints = Record<number, number>;
+export type MasonryBreakpointKey = MasonryBreakpointName | (string & {}) | number;
+
+/**
+ * Named minimum widths in px. Applications override any subset of these through
+ * the `breakpoints` option; unnamed entries keep their default.
+ */
+export type MasonryBreakpointScale = Partial<Record<MasonryBreakpointKey, number>>;
+
+/**
+ * Column counts keyed by breakpoint.
+ *
+ * `{ sm: 1, lg: 3, xl: 4 }` reads as "one column from `sm` up, three from `lg`,
+ * four from `xl`". Raw pixel widths work as well, and the two can be mixed:
+ * `{ 0: 1, 640: 2 }` and `{ xs: 1, sm: 2, 1440: 5 }` are both valid.
+ *
+ * Whichever form is used, the count that applies is the one for the largest
+ * breakpoint at or below the measured width.
+ */
+export type MasonryBreakpoints = Partial<Record<MasonryBreakpointKey, number>>;
 
 export interface MasonryEntryAnimation {
   /**
@@ -97,6 +119,12 @@ export interface ResolvedMasonryGridOptions {
    * available width. Mutually exclusive with `columns`.
    */
   readonly columnWidth?: number;
+  /**
+   * Minimum widths the breakpoint names in `columns` resolve to. Overrides are
+   * merged over the defaults, so naming one does not drop the rest, and new
+   * names can be added alongside them.
+   */
+  readonly breakpoints: MasonryBreakpointScale;
   /** When deriving columns from `columnWidth`, grow columns to fill the row. */
   readonly stretchColumns: boolean;
   readonly minColumns: number;
@@ -163,6 +191,7 @@ export interface ResolvedMasonryGridOptions {
 export interface MasonryGridOptions {
   readonly columns?: number | MasonryBreakpoints;
   readonly columnWidth?: number;
+  readonly breakpoints?: MasonryBreakpointScale;
   readonly stretchColumns?: boolean;
   readonly minColumns?: number;
   readonly maxColumns?: number;

@@ -368,7 +368,7 @@ flowchart TD
     STR -->|no| KEEP["columnWidth = fixedWidth"]
 
     Q3 -->|number| NUM["requested = columns"]
-    Q3 -->|breakpoint map| BP["matchBreakpoint(map, basisWidth)"]
+    Q3 -->|breakpoint map| BP["matchBreakpoint(map, scale, basisWidth)<br/><small>names resolved via `breakpoints`</small>"]
     Q3 -->|unset| DEF["requested = 3"]
     NUM --> CL2
     BP --> CL2
@@ -386,10 +386,13 @@ Three details:
   `columnWidth` is set alongside a sizer.
 - **`clampColumns`** applies `minColumns` and `maxColumns` with a hard floor of 1:
   `Math.max(1, Math.min(Math.max(count, minColumns), maxColumns ?? ∞))`.
-- **Breakpoint keys are sorted once per object**, cached in a `WeakMap` keyed by the map's identity,
-  so a `{ 0: 1, 768: 2 }` literal costs one `Object.keys().sort()` for its lifetime rather than one
-  per pass. `matchBreakpoint` then selects the largest key at or below the basis width, where the
-  basis is the container or the viewport per `breakpointBasis`.
+- **Breakpoint keys are resolved and sorted once per object.** A key is either a raw minimum width
+  or a name in the `breakpoints` scale (`sm`, `lg`, …), so `resolveStops` turns the map into sorted
+  `[width, count]` pairs and caches them in a `WeakMap` keyed by the map's identity — a
+  `{ sm: 1, lg: 3 }` literal costs one parse and sort for its lifetime rather than one per pass. The
+  cache entry stores the scale it was resolved against and is rebuilt if that reference changes,
+  since a name means nothing without it. `matchBreakpoint` then selects the largest stop at or below
+  the basis width, where the basis is the container or the viewport per `breakpointBasis`.
 
 ---
 

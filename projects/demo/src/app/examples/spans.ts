@@ -94,7 +94,7 @@ export class SpansExample {
   readonly spanEvery = signal(5);
 
   readonly options = computed<MasonryGridOptions>(() => ({
-    columns: { 0: 1, 560: 2, 900: 3, 1280: 4 },
+    columns: { xs: 1, sm: 2, md: 3, xl: 4 },
     gutter: 18,
     horizontalOrder: this.horizontalOrder(),
     direction: this.rtl() ? 'rtl' : 'ltr',

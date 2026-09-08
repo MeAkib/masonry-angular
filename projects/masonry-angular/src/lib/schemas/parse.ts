@@ -5,9 +5,9 @@ import type {
   MasonryOptionIssue,
   ResolvedMasonryGridOptions,
 } from '../models/options';
-import { DEFAULT_MASONRY_GRID_OPTIONS } from './defaults';
+import { DEFAULT_MASONRY_BREAKPOINTS, DEFAULT_MASONRY_GRID_OPTIONS } from './defaults';
 
-export { DEFAULT_MASONRY_GRID_OPTIONS } from './defaults';
+export { DEFAULT_MASONRY_BREAKPOINTS, DEFAULT_MASONRY_GRID_OPTIONS } from './defaults';
 
 /**
  * `ngDevMode` is replaced with `false` by production builds, so every block
@@ -51,6 +51,8 @@ function resolve(input: MasonryGridOptions): ResolvedMasonryGridOptions {
   return {
     columns: input.columns,
     columnWidth: input.columnWidth,
+    // Merged, not replaced: naming one breakpoint must not drop the others.
+    breakpoints: input.breakpoints ? { ...d.breakpoints, ...input.breakpoints } : d.breakpoints,
     stretchColumns: input.stretchColumns ?? d.stretchColumns,
     minColumns: input.minColumns ?? d.minColumns,
     maxColumns: input.maxColumns,
@@ -152,7 +154,11 @@ function describe(value: unknown): string {
   return String(value);
 }
 
-function validateColumns(collector: IssueCollector, columns: unknown): void {
+function validateColumns(
+  collector: IssueCollector,
+  columns: unknown,
+  scale: Record<string, number>,
+): void {
   if (columns === undefined) return;
 
   if (typeof columns === 'number') {
@@ -170,19 +176,46 @@ function validateColumns(collector: IssueCollector, columns: unknown): void {
 
   const keys = Object.keys(columns);
   if (keys.length === 0) {
-    collector.add('columns', 'Provide at least one breakpoint, e.g. `{ 0: 1, 768: 2 }`.');
+    collector.add('columns', 'Provide at least one breakpoint, e.g. `{ sm: 1, lg: 3 }`.');
     return;
   }
 
   for (const key of keys) {
-    const width = Number(key);
-    if (!Number.isInteger(width) || width < 0) {
+    if (key.trim() !== '' && Number.isFinite(Number(key))) {
+      const width = Number(key);
+      if (!Number.isInteger(width) || width < 0) {
+        collector.add(
+          `columns.${key}`,
+          `A numeric breakpoint key is a minimum width in px, so it must be a whole non-negative number; received '${key}'.`,
+        );
+      }
+    } else if (scale[key] === undefined) {
+      const known = Object.keys(scale)
+        .sort((a, b) => (scale[a] ?? 0) - (scale[b] ?? 0))
+        .map((name) => `\`${name}\``)
+        .join(', ');
       collector.add(
         `columns.${key}`,
-        `Breakpoint keys are minimum widths in px, so they must be whole non-negative numbers; received '${key}'.`,
+        `Unknown breakpoint '${key}'. Use a width in px, one of ${known}, or add '${key}' to the \`breakpoints\` option.`,
       );
     }
     collector.number(`columns.${key}`, columns[key], { min: 1, integer: true });
+  }
+}
+
+/** The names available to `columns`, i.e. the defaults plus any override. */
+function scaleFor(input: MasonryGridOptions): Record<string, number> {
+  return { ...DEFAULT_MASONRY_BREAKPOINTS, ...input.breakpoints } as Record<string, number>;
+}
+
+function validateBreakpoints(collector: IssueCollector, breakpoints: unknown): void {
+  if (breakpoints === undefined) return;
+  if (!isPlainObject(breakpoints)) {
+    collector.add('breakpoints', `Expected an object, received ${describe(breakpoints)}.`);
+    return;
+  }
+  for (const [name, width] of Object.entries(breakpoints)) {
+    collector.number(`breakpoints.${name}`, width, { min: 0, integer: true });
   }
 }
 
@@ -240,7 +273,8 @@ function validate(input: MasonryGridOptions): readonly MasonryOptionIssue[] {
   const collector = new IssueCollector();
   const value = input as Record<string, unknown>;
 
-  validateColumns(collector, value['columns']);
+  validateBreakpoints(collector, value['breakpoints']);
+  validateColumns(collector, value['columns'], scaleFor(input));
   collector.number('columnWidth', value['columnWidth'], { min: Number.MIN_VALUE });
   collector.boolean('stretchColumns', value['stretchColumns']);
   collector.number('minColumns', value['minColumns'], { min: 1, integer: true });
