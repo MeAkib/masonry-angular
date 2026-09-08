@@ -12,6 +12,7 @@ export class App {
   readonly examples = [
     { path: 'gallery', label: 'Gallery' },
     { path: 'spans', label: 'Spans & stamps' },
+    { path: 'dashboard', label: 'Dashboard' },
     { path: 'dynamic', label: 'Dynamic items' },
     { path: 'performance', label: 'Performance' },
   ];

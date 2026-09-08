@@ -227,3 +227,175 @@ input[type='range'] {
 .stamp span {
   color: var(--muted);
 }
+
+/* ---- Dashboard widgets ---------------------------------------------------- */
+
+/*
+ * Every tile has an author-set height, so the inner layout has to fill it
+ * rather than grow it: the body flexes, and overflow is clipped.
+ */
+.widget {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+  padding: 13px 15px 15px;
+  border: 1px solid var(--line);
+  border-left: 3px solid hsl(var(--hue) 65% 55%);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+
+.widget header {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.widget h2 {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.widget .dims {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.kpi {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.kpi b {
+  font-size: 1.75rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi .delta {
+  color: #1a7f4b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.kpi .delta.down {
+  color: #c2382c;
+}
+
+.kpi .delta small {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+@media (prefers-color-scheme: dark) {
+  .kpi .delta {
+    color: #55c98d;
+  }
+
+  .kpi .delta.down {
+    color: #f0776a;
+  }
+}
+
+.bars {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  align-items: flex-end;
+  min-height: 0;
+}
+
+.bars i {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  background: hsl(var(--hue) 65% 55% / 0.5);
+}
+
+.widget ul {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+}
+
+.widget li {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  color: var(--muted);
+}
+
+.widget li b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The deferred body fills the tile the author already sized. */
+.widget-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.skeleton {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 9px;
+  justify-content: center;
+}
+
+.skeleton span {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--hue) 45% 58% / 0.14),
+    hsl(var(--hue) 45% 58% / 0.34),
+    hsl(var(--hue) 45% 58% / 0.14)
+  );
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton span:nth-child(1) {
+  width: 68%;
+}
+
+.skeleton span:nth-child(2) {
+  width: 92%;
+}
+
+.skeleton span:nth-child(3) {
+  width: 51%;
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 220% 0;
+  }
+  to {
+    background-position: -40% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton span {
+    animation: none;
+  }
+}

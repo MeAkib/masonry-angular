@@ -2,11 +2,11 @@
 
 Angular workspace containing the **masonry-angular** library and a runnable example application.
 
-| Project                   | Path                               | What it is                                                            |
-| ------------------------- | ---------------------------------- | --------------------------------------------------------------------- |
-| `masonry-angular`         | `projects/masonry-angular`         | The publishable library. [Docs →](projects/masonry-angular/README.md) |
-| `masonry-angular/testing` | `projects/masonry-angular/testing` | Test doubles, published as a secondary entry point.                   |
-| `demo`                    | `projects/demo`                    | The example application. [Docs →](projects/demo/README.md)            |
+| Project                   | Path                               | What it is                                                                                                                    |
+| ------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `masonry-angular`         | `projects/masonry-angular`         | The publishable library. [Usage →](projects/masonry-angular/README.md) · [Full reference →](projects/masonry-angular/DOCS.md) |
+| `masonry-angular/testing` | `projects/masonry-angular/testing` | Test doubles, published as a secondary entry point.                                                                           |
+| `demo`                    | `projects/demo`                    | The example application. [Docs →](projects/demo/README.md)                                                                    |
 
 ## Getting started
 

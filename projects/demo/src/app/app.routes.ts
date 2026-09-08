@@ -13,6 +13,11 @@ export const routes: Routes = [
     loadComponent: () => import('./examples/spans').then((m) => m.SpansExample),
   },
   {
+    path: 'dashboard',
+    title: 'Dashboard — masonry-angular',
+    loadComponent: () => import('./examples/dashboard').then((m) => m.DashboardExample),
+  },
+  {
     path: 'dynamic',
     title: 'Dynamic items — masonry-angular',
     loadComponent: () => import('./examples/dynamic').then((m) => m.DynamicExample),
