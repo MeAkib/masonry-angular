@@ -20,7 +20,6 @@ behind the machinery rather than the instructions for changing it, read
 - [Testing](#testing)
 - [Debugging](#debugging)
 - [Performance rules to not break](#performance-rules-to-not-break)
-- [Publishing](#publishing)
 
 ---
 
@@ -66,17 +65,16 @@ Tests, unlike the demo, run against the sources directly, so `npm test` needs no
 | Script                | What it does                                                                               |
 | --------------------- | ------------------------------------------------------------------------------------------ |
 | `npm start`           | Build the library, then serve the demo on `:4200`.                                         |
-| `npm run build:lib`   | Build the publishable package into `dist/masonry-angular` (ng-packagr).                    |
+| `npm run build:lib`   | Build the library into `dist/masonry-angular` (ng-packagr).                                |
 | `npm run watch:lib`   | Same, rebuilding on every change.                                                          |
 | `npm run build`       | Build the library and a production bundle of the demo.                                     |
 | `npm test`            | Run the library test suite (Vitest + jsdom). 185 tests.                                    |
 | `npm run test:watch`  | Same, in watch mode.                                                                       |
 | `npm run format`      | Prettier over both projects.                                                               |
-| `npm run pack:lib`    | Build and `npm pack` the package, to inspect what would publish.                           |
-| `npm run release:dry` | Test, build, and print exactly what `npm publish` would send.                              |
-| `npm run release`     | Test, build, and publish `dist/masonry-angular`.                                           |
 | `npm run size`        | Build, then measure the shipped bundle gzipped, against the other masonry libraries.       |
 | `npm run verify:native` | Check the native CSS path in a real Chromium (see [Testing](#testing)).                  |
+| `npm run verify:ssr`  | Render on a real server with no browser globals (see [Testing](#testing)).                 |
+| `npm run size:features` | Measure what each feature costs, by ablation.                                             |
 | `npm run ng`          | The raw Angular CLI, for anything the scripts above do not cover.                          |
 
 Two numbers worth knowing, both produced by scripts above rather than estimated: the production
@@ -482,33 +480,3 @@ one; these four are the ones a change is most likely to violate.
   compositor layer: fine for five items, a memory problem for five thousand. For the same reason
   only `transform` is transitioned — transitioning `width` would re-run layout for every item on
   every frame of a resize.
-
----
-
-## Publishing
-
-```bash
-npm run release:dry   # test, build, and print exactly what would publish
-npm run release       # test, build, and publish dist/masonry-angular
-```
-
-Only `dist/masonry-angular` is publishable. ng-packagr writes the manifest that consumers need
-there — `exports`, the FESM bundle, the type definitions, and Angular as a *peer* dependency — and
-copies the library README as the npm page.
-
-**Never run `npm publish` from the workspace root.** That manifest describes the workspace, not the
-package: it lists Angular as a runtime dependency and declares no entry point, so what lands on npm
-cannot be imported and rewrites the dependency tree of whoever installs it. `"private": true` in the
-root `package.json` exists to make that mistake impossible; leave it in place.
-
-The version that matters is the one in `projects/masonry-angular/package.json` — that is the manifest
-ng-packagr copies into `dist/`. The root manifest's version is never published and is not the
-library's.
-
-```bash
-cd projects/masonry-angular
-npm version minor       # bumps the manifest, commits, tags
-cd ../..
-npm run release
-git push --follow-tags
-```

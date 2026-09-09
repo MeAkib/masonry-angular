@@ -30,7 +30,8 @@ working on both.
 | [Usage](projects/masonry-angular/README.md) | The short version — what it is and how to configure it. |
 | [Full reference](projects/masonry-angular/DOCS.md) | Every option, spans, stamps, testing, migration. |
 | [Changelog](CHANGELOG.md) | What changed in each release, and how to upgrade. |
-| [Contributing](CONTRIBUTING.md) | Setup, where each file lives, how to make a change, publishing. |
+| [Releasing](RELEASING.md) | Publishing to npm: account setup, the release loop, CI. |
+| [Contributing](CONTRIBUTING.md) | Setup, where each file lives, how a layout pass works, how to make a change. |
 | [Architecture](ARCHITECTURE.md) | How it works inside: the layout pass, invalidation, the solver. |
 
 ## License
