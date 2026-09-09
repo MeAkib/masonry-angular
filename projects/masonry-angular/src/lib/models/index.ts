@@ -21,6 +21,7 @@ export type {
   ResolvedMasonryGridOptions,
 } from './options';
 export type {
+  MasonryGridState,
   MasonryLayoutRequest,
   MasonryLayoutSolution,
   MasonryMeasuredItem,

@@ -10,6 +10,11 @@ import {
 import { MasonryGridHost } from '../core/host';
 import type { MasonryItemHandle } from '../models';
 
+declare const ngDevMode: boolean | undefined;
+
+/** Warn once per application, not once per item. */
+let warnedNativeIgnore = false;
+
 /** Coerce `[masonryColSpan]` values, including the bare-attribute empty string. */
 function coerceColSpan(value: number | string | undefined | null): number {
   if (value === '' || value === null || value === undefined) return 1;
@@ -62,8 +67,25 @@ export class MasonryGridItem implements MasonryItemHandle {
     // but the grid does have to rewrite item widths, which it otherwise skips
     // when the column geometry is unchanged.
     effect(() => {
-      this.colSpan();
-      this.ignored();
+      const span = this.colSpan();
+      const ignored = this.ignored();
+      // Under native layout the span is the item's own business: the browser
+      // reads `grid-column` off the element and the grid never walks the items
+      // at all. The property is inert in a non-grid container, so it is safe to
+      // write before feature detection has an answer.
+      if (this.grid.options().native) {
+        this.element.style.gridColumn = span > 1 ? `span ${span}` : '';
+
+        if ((typeof ngDevMode === 'undefined' || ngDevMode) && ignored && !warnedNativeIgnore) {
+          warnedNativeIgnore = true;
+          console.warn(
+            '[masonry-angular] `masonryIgnore` has no effect while the browser is laying the ' +
+              'grid out natively: a grid item has no normal flow to return to. Set ' +
+              '`native: false` to force the JavaScript engine, or leave the item out of the ' +
+              'grid entirely with @if.',
+          );
+        }
+      }
       this.grid.invalidateItemGeometry();
     });
 
@@ -89,7 +111,12 @@ export class MasonryGridItem implements MasonryItemHandle {
    */
   private applyInitialStyles(): void {
     const style = this.element.style;
-    if (this.grid.options().ssr.fallback === 'columns') {
+    const options = this.grid.options();
+    // A `native` grid never hides its items: in a browser with `grid-lanes` the
+    // server's HTML is already laid out on first paint, and in one without it
+    // these are exactly the styles the multi-column fallback needs. Both are
+    // harmless inside a grid container, so no feature detection is required.
+    if (options.native || options.ssr.fallback === 'columns') {
       style.breakInside = 'avoid';
       style.width = '100%';
     } else {
@@ -108,7 +135,10 @@ export class MasonryGridItem implements MasonryItemHandle {
    * resolve and would strand the item forever.
    */
   private awaitImages(): void {
-    if (!this.grid.options().awaitImages) return;
+    // Native layout reflows itself when an image decodes and changes the item's
+    // height, so holding the item back would buy nothing and cost a promise per
+    // image.
+    if (!this.grid.options().awaitImages || this.grid.nativeActive()) return;
 
     const pending: Promise<unknown>[] = [];
     for (const image of this.element.querySelectorAll('img')) {

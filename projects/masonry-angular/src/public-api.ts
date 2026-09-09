@@ -22,6 +22,11 @@ export { MasonryLayoutEngine } from './lib/core/layout-engine';
 export { resolveColumnGeometry, resolveFallbackColumns } from './lib/core/column-resolver';
 export { FrameScheduler } from './lib/core/scheduler';
 
+// Native CSS masonry (`display: grid-lanes`). `supportsNativeMasonry` is
+// exported so an application can branch on it — to pick a different page size
+// for a virtualised feed, say — without repeating the feature test.
+export { supportsNativeMasonry } from './lib/core/native';
+
 export { DEFAULT_MASONRY_BREAKPOINTS, DEFAULT_MASONRY_GRID_OPTIONS } from './lib/schemas/defaults';
 export {
   MasonryGridOptionsError,
@@ -40,6 +45,7 @@ export type {
   MasonryEntryAnimation,
   MasonryExitAnimation,
   MasonryGridOptions,
+  MasonryGridState,
   MasonryItemHandle,
   MasonryKeyframe,
   MasonryLayoutEvent,

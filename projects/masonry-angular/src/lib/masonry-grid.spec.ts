@@ -158,10 +158,10 @@ describe('MasonryGrid', () => {
     const instance = fixture.debugElement.children[0]!.componentInstance as MasonryGrid;
 
     expect(instance.ready()).toBe(true);
-    expect(instance.columns()).toBe(3);
-    expect(instance.columnWidth()).toBe(100);
-    expect(instance.contentHeight()).toBe(80);
-    expect(instance.itemCount()).toBe(3);
+    expect(instance.state().columns).toBe(3);
+    expect(instance.state().columnWidth).toBe(100);
+    expect(instance.state().contentHeight).toBe(80);
+    expect(instance.state().itemCount).toBe(3);
   });
 
   it('emits layoutComplete with the pass summary', () => {
@@ -307,15 +307,15 @@ describe('MasonryGrid', () => {
     settle({ a: 80, b: 40, c: 60 });
 
     const instance = fixture.debugElement.children[0]!.componentInstance as MasonryGrid;
-    expect(instance.columns()).toBe(3);
-    expect(instance.columnWidth()).toBe(100);
+    expect(instance.state().columns).toBe(3);
+    expect(instance.state().columnWidth).toBe(100);
     expect(positionOf('a')[0]).toBe(220);
 
     resizeContainerTo(CONTAINER_WIDTH + 20, { a: 80, b: 40, c: 60 });
 
     // Geometry is untouched; only the right edge moved.
-    expect(instance.columns()).toBe(3);
-    expect(instance.columnWidth()).toBe(100);
+    expect(instance.state().columns).toBe(3);
+    expect(instance.state().columnWidth).toBe(100);
     expect(positionOf('a')[0]).toBe(240);
   });
 
@@ -546,8 +546,8 @@ describe('MasonryGrid', () => {
 
       const instance = fixture.debugElement.children[0]!.componentInstance as MasonryGrid;
       // 320 wide, 150 + 10 track => 2 columns of exactly 150 (never stretched).
-      expect(instance.columnWidth()).toBe(150);
-      expect(instance.columns()).toBe(2);
+      expect(instance.state().columnWidth).toBe(150);
+      expect(instance.state().columns).toBe(2);
     });
 
     it('follows the sizer when its width changes', () => {
@@ -555,12 +555,12 @@ describe('MasonryGrid', () => {
       host.sized.set(true);
       settleWithSizer(150);
       const instance = fixture.debugElement.children[0]!.componentInstance as MasonryGrid;
-      expect(instance.columns()).toBe(2);
+      expect(instance.state().columns).toBe(2);
 
       settleWithSizer(100);
 
-      expect(instance.columnWidth()).toBe(100);
-      expect(instance.columns()).toBe(3);
+      expect(instance.state().columnWidth).toBe(100);
+      expect(instance.state().columns).toBe(3);
     });
 
     it('warns when it contradicts an explicit column option', () => {
@@ -601,11 +601,11 @@ describe('MasonryGrid', () => {
       host.options.set({ columns: 2, gutter: 10, entryAnimation: false, observeResize: false });
       settle({ a: 80, b: 40, c: 60 });
       const instance = fixture.debugElement.children[0]!.componentInstance as MasonryGrid;
-      const width = instance.columnWidth();
+      const width = instance.state().columnWidth;
 
       resizeContainerTo(CONTAINER_WIDTH * 2, { a: 80, b: 40, c: 60 });
 
-      expect(instance.columnWidth()).toBe(width);
+      expect(instance.state().columnWidth).toBe(width);
     });
   });
 

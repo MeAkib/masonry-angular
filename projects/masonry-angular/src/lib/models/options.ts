@@ -148,6 +148,23 @@ export interface ResolvedMasonryGridOptions {
   /** Whether breakpoints are matched against the container or the viewport. */
   readonly breakpointBasis: 'container' | 'viewport';
 
+  /**
+   * Let the browser lay the grid out with native CSS masonry
+   * (`display: grid-lanes`) where it supports it, falling back to the
+   * JavaScript engine where it does not.
+   *
+   * Native layout costs no measurement, no observers and no transforms, and it
+   * is applied by an `@supports` rule — so server-rendered HTML is already
+   * correct before any JavaScript runs. In exchange the browser owns the
+   * packing algorithm, which means `horizontalOrder`, `verticalOrigin`,
+   * `fitWidth`, `stretchColumns: false` and stamps have no effect; a
+   * development build warns when one of those is set alongside it.
+   *
+   * Off by default, so a grid lays out identically in every browser until you
+   * opt in.
+   */
+  readonly native: boolean;
+
   readonly transition: MasonryTransition;
   /** Web Animations entry effect for newly added items, or `false` to disable. */
   readonly entryAnimation: false | MasonryEntryAnimation;
@@ -205,6 +222,7 @@ export interface MasonryGridOptions {
   readonly verticalOrigin?: 'top' | 'bottom';
   readonly fitWidth?: boolean;
   readonly breakpointBasis?: 'container' | 'viewport';
+  readonly native?: boolean;
 
   readonly transition?: Partial<MasonryTransition>;
   readonly entryAnimation?: false | Partial<MasonryEntryAnimation>;

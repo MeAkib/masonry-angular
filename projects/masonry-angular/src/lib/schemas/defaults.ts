@@ -38,6 +38,7 @@ export const DEFAULT_MASONRY_GRID_OPTIONS: ResolvedMasonryGridOptions = Object.f
   verticalOrigin: 'top',
   fitWidth: false,
   breakpointBasis: 'container',
+  native: false,
 
   transition: Object.freeze({
     duration: 300,

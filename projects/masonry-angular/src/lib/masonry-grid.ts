@@ -4,6 +4,7 @@ import {
   DestroyRef,
   ElementRef,
   NgZone,
+  type Signal,
   afterNextRender,
   computed,
   effect,
@@ -18,10 +19,18 @@ import { MasonryLayoutEngine } from './core/layout-engine';
 import { resolveColumnGeometry, resolveFallbackColumns } from './core/column-resolver';
 import { FrameScheduler } from './core/scheduler';
 import { MasonryGridHost } from './core/host';
+import {
+  nativeColumnsAreStatic,
+  nativeTemplateColumns,
+  nativeUnsupportedOptions,
+  supportsNativeMasonry,
+} from './core/native';
 import { NG_MASONRY_GRID_DEFAULTS } from './providers';
 import type {
   ItemRecord,
+  MasonryBreakpoints,
   MasonryGridOptions,
+  MasonryGridState,
   MasonryItemHandle,
   MasonryLayoutEvent,
   MasonryRemoveEvent,
@@ -41,16 +50,53 @@ declare const ngDevMode: boolean | undefined;
 
 const HASH_PRECISION = 100;
 
+const INITIAL_STATE: MasonryGridState = Object.freeze({
+  columns: 0,
+  columnWidth: 0,
+  contentHeight: 0,
+  itemCount: 0,
+  pass: 0,
+});
+
+/**
+ * Coerce a shorthand input, including the static-attribute string form.
+ *
+ * `columns="3"`, `[columns]="3"` and `[columns]="{ 0: 1, 768: 3 }"` all arrive
+ * here and come out as something `parseMasonryGridOptions` accepts — which is
+ * what lets the common case be a plain HTML attribute with no binding and no
+ * object literal. A string that is not a number is passed straight through, so
+ * the development-mode validator reports it with a precise path rather than it
+ * being silently coerced to a wrong number here.
+ */
+function coerceShorthand<T>(value: T | string | undefined | null): T | number | undefined {
+  if (value === null || value === undefined || value === '') return undefined;
+  if (typeof value !== 'string') return value;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : (value as unknown as number);
+}
+
 /**
  * A masonry grid that positions its projected children into balanced columns.
  *
+ * The common case is plain attributes — no binding, no object literal:
+ *
  * ```html
- * <masonry-grid [options]="{ columns: { 0: 1, 768: 2, 1200: 4 }, gutter: 20 }">
+ * <masonry-grid columns="3" gutter="20">
  *   @for (photo of photos(); track photo.id) {
  *     <article masonryGridItem>…</article>
  *   }
  * </masonry-grid>
  * ```
+ *
+ * Responsive grids take a breakpoint map, or a target column width instead:
+ *
+ * ```html
+ * <masonry-grid [columns]="{ 0: 1, 768: 2, 1200: 4 }" gutter="20">…</masonry-grid>
+ * <masonry-grid columnWidth="260" gutter="20">…</masonry-grid>
+ * ```
+ *
+ * Anything beyond those five shorthands lives on `[options]`, and the two
+ * compose — a shorthand wins over the same field in `[options]`.
  */
 @Component({
   selector: 'masonry-grid',
@@ -62,9 +108,11 @@ const HASH_PRECISION = 100;
     class: 'masonry-grid',
     '[class.masonry-grid--ready]': 'ready()',
     '[class.masonry-grid--fallback]': 'usesFallback()',
+    '[class.masonry-grid--native]': 'options().native',
     '[style.--masonry-fallback-columns]': 'fallbackColumns()',
-    '[style.--masonry-gutter-x]': 'gutterX()',
-    '[style.--masonry-gutter-y]': 'gutterY()',
+    '[style.--masonry-gutter-x]': 'gutterXPx()',
+    '[style.--masonry-gutter-y]': 'gutterYPx()',
+    '[style.--masonry-native-columns]': 'nativeTemplate()',
   },
   styles: `
     :host {
@@ -82,6 +130,42 @@ const HASH_PRECISION = 100;
       column-gap: var(--masonry-gutter-x, 16px);
       column-fill: balance;
     }
+
+    /*
+     * Native CSS masonry, opted into with \`native: true\`.
+     *
+     * The decision is made here, by the browser, rather than in JavaScript —
+     * which is the whole point: server-rendered HTML is already laid out
+     * correctly on first paint, with no measuring pass and nothing to hydrate.
+     * A browser that matches neither rule keeps the multi-column fallback above
+     * and hands over to the JavaScript engine.
+     *
+     * Two spellings, because the feature was renamed mid-flight:
+     * \`grid-lanes\` is the final syntax and what Safari ships; \`masonry\` is
+     * Chromium's earlier prototype, still what its flag exposes. They take the
+     * same \`grid-template-columns\` and \`gap\`, so the declarations are
+     * identical and a browser simply drops the block it cannot parse.
+     *
+     * Multi-column properties do not apply to a grid container, so the
+     * fallback's \`column-count\` goes inert on its own once either rule wins.
+     */
+    @supports (display: grid-lanes) {
+      :host(.masonry-grid--native) {
+        display: grid-lanes;
+        grid-template-columns: var(--masonry-native-columns, repeat(3, 1fr));
+        column-gap: var(--masonry-gutter-x, 16px);
+        row-gap: var(--masonry-gutter-y, 16px);
+      }
+    }
+
+    @supports (display: masonry) and (not (display: grid-lanes)) {
+      :host(.masonry-grid--native) {
+        display: masonry;
+        grid-template-columns: var(--masonry-native-columns, repeat(3, 1fr));
+        column-gap: var(--masonry-gutter-x, 16px);
+        row-gap: var(--masonry-gutter-y, 16px);
+      }
+    }
   `,
 })
 export class MasonryGrid implements MasonryGridHost {
@@ -89,41 +173,90 @@ export class MasonryGrid implements MasonryGridHost {
   private readonly zone = inject(NgZone);
   private readonly globalDefaults = inject(NG_MASONRY_GRID_DEFAULTS);
 
+  // ---------------------------------------------------------------------------
+  // Configuration
+  //
+  // The five fields almost every grid sets are top-level inputs, so the common
+  // case is a plain attribute and never an object literal. Everything else lives
+  // on `[options]`, and the two layer: application defaults, then `[options]`,
+  // then any shorthand that was set.
+  // ---------------------------------------------------------------------------
+
   /**
-   * Grid configuration. Merged over any application-wide defaults and validated
-   * and filled from the defaults, so the value read internally is always complete.
+   * Fixed column count, or column counts keyed by breakpoint.
    *
-   * Structural equality is applied to the resolved result, which means an inline
-   * `[options]="{ gutter: 16 }"` literal — a fresh object on every change
-   * detection run — does not retrigger layout.
+   * `columns="3"`, `[columns]="3"` and `[columns]="{ 0: 1, 768: 2, 1200: 4 }"`
+   * are all accepted. Mutually exclusive with `columnWidth`.
    */
-  readonly options = input<ResolvedMasonryGridOptions, MasonryGridOptions | undefined>(
-    DEFAULT_MASONRY_GRID_OPTIONS,
-    { transform: (value) => this.resolveOptions(value) },
+  readonly columns = input<
+    number | MasonryBreakpoints | undefined,
+    number | string | MasonryBreakpoints | undefined
+  >(undefined, { transform: coerceShorthand });
+
+  /**
+   * Target minimum column width in px; the count follows the available width.
+   * `columnWidth="260"` is the whole responsive story for most grids — no
+   * breakpoint table to maintain.
+   */
+  readonly columnWidth = input<number | undefined, number | string | undefined>(undefined, {
+    transform: coerceShorthand,
+  });
+
+  /** Gap in px, on both axes. `gutterX` and `gutterY` override it per axis. */
+  readonly gutter = input<number | undefined, number | string | undefined>(undefined, {
+    transform: coerceShorthand,
+  });
+  /** Horizontal gap in px. Falls back to `gutter`. */
+  readonly gutterX = input<number | undefined, number | string | undefined>(undefined, {
+    transform: coerceShorthand,
+  });
+  /** Vertical gap in px. Falls back to `gutter`. */
+  readonly gutterY = input<number | undefined, number | string | undefined>(undefined, {
+    transform: coerceShorthand,
+  });
+
+  /**
+   * Everything the shorthands above do not cover — animations, SSR, RTL,
+   * stamps, escape hatches.
+   *
+   * This is the raw `[options]` input, exposed only because Angular requires a
+   * bound input to be public. Read `options()` instead: that is the merged,
+   * validated, fully defaulted value actually in effect.
+   */
+  readonly optionsInput = input<MasonryGridOptions | undefined>(undefined, { alias: 'options' });
+
+  /**
+   * Validated, fully defaulted options currently in effect.
+   *
+   * The result is memoised on *structural* equality of the merged input, so it
+   * keeps the same object reference across change detection runs that did not
+   * actually change anything. That is what makes an inline
+   * `[options]="{ gutter: 16 }"` literal — a fresh object every run — free: the
+   * computed's own equality check sees no change, so nothing downstream
+   * recomputes and no layout pass is queued.
+   */
+  readonly options: Signal<ResolvedMasonryGridOptions> = computed(() =>
+    this.resolveOptions({
+      columns: this.columns(),
+      columnWidth: this.columnWidth(),
+      gutter: this.gutter(),
+      gutterX: this.gutterX(),
+      gutterY: this.gutterY(),
+    }),
   );
 
-  private lastRawOptions: MasonryGridOptions | undefined;
-  private hasLastRawOptions = false;
+  private lastMergedOptions: MasonryGridOptions | undefined;
+  private hasLastMergedOptions = false;
   private lastResolvedOptions = DEFAULT_MASONRY_GRID_OPTIONS;
 
-  /**
-   * Validate options, reusing the previous result when the incoming value is
-   * structurally unchanged.
-   *
-   * Returning the identical object reference is what makes an inline
-   * `[options]="{ gutter: 16 }"` literal — a fresh object on every change
-   * detection run — free: the input signal sees no change, so nothing
-   * downstream recomputes and no layout is queued.
-   */
-  private resolveOptions(value: MasonryGridOptions | undefined): ResolvedMasonryGridOptions {
-    if (this.hasLastRawOptions && masonryOptionsEqual(this.lastRawOptions, value)) {
+  private resolveOptions(shorthand: MasonryGridOptions): ResolvedMasonryGridOptions {
+    const merged = mergeMasonryGridOptions(this.globalDefaults, this.optionsInput(), shorthand);
+    if (this.hasLastMergedOptions && masonryOptionsEqual(this.lastMergedOptions, merged)) {
       return this.lastResolvedOptions;
     }
-    this.lastRawOptions = value;
-    this.hasLastRawOptions = true;
-    this.lastResolvedOptions = parseMasonryGridOptions(
-      mergeMasonryGridOptions(this.globalDefaults, value),
-    );
+    this.lastMergedOptions = merged;
+    this.hasLastMergedOptions = true;
+    this.lastResolvedOptions = parseMasonryGridOptions(merged);
     return this.lastResolvedOptions;
   }
 
@@ -138,14 +271,41 @@ export class MasonryGrid implements MasonryGridHost {
 
   /** `true` once the browser has completed its first real layout pass. */
   readonly ready = signal(false);
-  /** Resolved column count for the current container width. */
-  readonly columns = signal(0);
-  /** Resolved width of a single column, in CSS pixels. */
-  readonly columnWidth = signal(0);
-  /** Height of the laid-out content, in CSS pixels. */
-  readonly contentHeight = signal(0);
-  /** Number of items positioned by the most recent pass. */
-  readonly itemCount = signal(0);
+
+  /**
+   * What the last pass produced: column count, column width, content height,
+   * item count and pass number. One signal rather than five, because these are
+   * written together and almost always read together — and because it leaves
+   * `columns`, `columnWidth` and `gutter` free to mean what a reader expects
+   * them to mean, which is the grid's inputs.
+   */
+  readonly state = signal<MasonryGridState>(INITIAL_STATE);
+
+  /**
+   * `true` when the browser is laying this grid out itself with native CSS
+   * masonry, so no measuring, positioning or observing is happening at all.
+   *
+   * Always `false` on the server and in browsers without `display: grid-lanes`.
+   */
+  readonly nativeActive = computed(() => this.options().native && supportsNativeMasonry());
+
+  /**
+   * Column count for a native grid whose `columns` is a breakpoint map — the
+   * one native case a single static declaration cannot express. Fixed counts
+   * and `columnWidth` grids never read it, and never observe anything.
+   */
+  private readonly nativeBreakpointColumns = signal(0);
+
+  /** `grid-template-columns` for a native grid, or `null` when not opted in. */
+  protected readonly nativeTemplate = computed(() => {
+    const options = this.options();
+    if (!options.native) return null;
+    const measured = this.nativeBreakpointColumns();
+    return nativeTemplateColumns(
+      options,
+      measured > 0 ? measured : resolveFallbackColumns(options),
+    );
+  });
 
   /**
    * The elements registered as items, in DOM order — the replacement for
@@ -163,15 +323,23 @@ export class MasonryGrid implements MasonryGridHost {
     return result;
   }
 
-  /** Whether the CSS multi-column fallback is currently painting the grid. */
-  readonly usesFallback = computed(
-    () => !this.ready() && this.options().ssr.fallback === 'columns',
-  );
+  /**
+   * Whether the CSS multi-column fallback is currently painting the grid.
+   *
+   * A `native` grid always keeps it on until the first pass, whatever
+   * `ssr.fallback` says: in a browser with `grid-lanes` the `@supports` rule
+   * overrides it on first paint, and in one without it this *is* the
+   * pre-hydration rendering.
+   */
+  readonly usesFallback = computed(() => {
+    const options = this.options();
+    return !this.ready() && (options.native || options.ssr.fallback === 'columns');
+  });
   /** Column count used by that fallback. */
   readonly fallbackColumns = computed(() => resolveFallbackColumns(this.options()));
 
-  protected readonly gutterX = computed(() => `${this.options().gutterX}px`);
-  protected readonly gutterY = computed(() => `${this.options().gutterY}px`);
+  protected readonly gutterXPx = computed(() => `${this.options().gutterX}px`);
+  protected readonly gutterYPx = computed(() => `${this.options().gutterY}px`);
 
   private readonly engine = new MasonryLayoutEngine();
   private readonly scheduler = new FrameScheduler(() => this.runLayout());
@@ -210,6 +378,7 @@ export class MasonryGrid implements MasonryGridHost {
   private removedSinceEmit = 0;
   private awaitingImages = 0;
   private warnedBottomStamp = false;
+  private warnedNativeConflict = false;
 
   /** Items whose position transition is enabled on the next frame. */
   private readonly transitionQueue: ItemRecord[] = [];
@@ -300,6 +469,13 @@ export class MasonryGrid implements MasonryGridHost {
 
   addItem(item: MasonryItemHandle): void {
     if (this.records.has(item.element)) return;
+    if (this.nativeActive()) {
+      // Registered so `items()` and `state().itemCount` stay truthful, but never
+      // measured: under native layout the browser reflows on its own.
+      this.records.set(item.element, nativeRecord(item));
+      this.requestLayout();
+      return;
+    }
     this.widthsDirty = true;
     this.records.set(item.element, {
       handle: item,
@@ -432,7 +608,8 @@ export class MasonryGrid implements MasonryGridHost {
   addStamp(element: HTMLElement): void {
     if (this.stamps.has(element)) return;
     this.stamps.add(element);
-    this.resizeObserver?.observe(element, { box: 'border-box' });
+    // Native layout has no concept of a stamp; `initializeNative` warns.
+    if (!this.nativeActive()) this.resizeObserver?.observe(element, { box: 'border-box' });
     this.requestLayout();
   }
 
@@ -449,6 +626,11 @@ export class MasonryGrid implements MasonryGridHost {
   private initialize(): void {
     this.initialized = true;
     this.viewportWidth = window.innerWidth;
+
+    if (this.nativeActive()) {
+      this.initializeNative();
+      return;
+    }
 
     // Everything below is plumbing that must never schedule change detection.
     this.zone.runOutsideAngular(() => {
@@ -480,6 +662,93 @@ export class MasonryGrid implements MasonryGridHost {
     // application calls `layout()` itself.
     if (this.options().autoLayout) this.scheduler.schedule();
     else this.layoutBlocked = true;
+  }
+
+  /**
+   * Hand the grid over to the browser.
+   *
+   * There is nothing to measure, nothing to position and — for a fixed count or
+   * a `columnWidth` grid — nothing to observe: `grid-template-columns` already
+   * describes the whole responsive behaviour, and the browser re-lays-out on
+   * resize, on content changes and on image loads by itself. A breakpoint map
+   * is the one case that cannot be written as a single declaration, so it keeps
+   * one container observer alive to re-evaluate the count. Nothing else here
+   * touches an item.
+   */
+  private initializeNative(): void {
+    const options = this.options();
+
+    if (typeof ngDevMode === 'undefined' || ngDevMode) {
+      const message = nativeUnsupportedOptions(options, this.stamps.size > 0);
+      if (message !== undefined && !this.warnedNativeConflict) {
+        this.warnedNativeConflict = true;
+        console.warn(message);
+      }
+    }
+
+    if (!nativeColumnsAreStatic(options)) {
+      this.zone.runOutsideAngular(() => {
+        this.resizeObserver = new ResizeObserver((entries) => {
+          const entry = entries[entries.length - 1];
+          if (entry) this.containerWidth = contentWidthOf(entry);
+          this.scheduler.schedule(this.options().resizeDebounce);
+        });
+        this.containerWidth = this.element.clientWidth;
+        this.widthSource = this.element;
+        this.resizeObserver.observe(this.element, { box: 'content-box' });
+      });
+    }
+
+    this.element.classList.remove('masonry-grid--fallback');
+    this.runNativeLayout();
+  }
+
+  /**
+   * A "pass" under native layout: re-evaluate the column count if it is
+   * breakpoint-driven, publish the state, and stop. No solve, no writes.
+   */
+  private runNativeLayout(): void {
+    const options = this.options();
+    const started = performance.now();
+
+    let columns = resolveFallbackColumns(options);
+    if (!nativeColumnsAreStatic(options)) {
+      const basis =
+        options.breakpointBasis === 'viewport' ? this.viewportWidth : this.containerWidth;
+      columns = resolveColumnGeometry(this.containerWidth, basis, options).columns;
+      this.nativeBreakpointColumns.set(columns);
+    } else if (typeof options.columns === 'number') {
+      columns = options.columns;
+    } else {
+      // A `columnWidth` grid: `auto-fill` decides the count, so read back what
+      // the browser actually produced rather than guessing at it.
+      columns = countNativeColumns(this.element) || columns;
+    }
+
+    const itemCount = this.records.size;
+    this.pass++;
+    this.state.set({
+      columns,
+      // The browser owns the track sizes under native layout and never reports
+      // them back; reporting a number we did not compute would be a lie.
+      columnWidth: 0,
+      contentHeight: this.element.offsetHeight,
+      itemCount,
+      pass: this.pass,
+    });
+    this.ready.set(true);
+
+    this.zone.run(() => {
+      this.layoutComplete.emit({
+        columns,
+        columnWidth: 0,
+        itemCount,
+        height: this.element.offsetHeight,
+        width: this.containerWidth || this.element.clientWidth,
+        durationMs: performance.now() - started,
+        pass: this.pass,
+      });
+    });
   }
 
   /**
@@ -529,6 +798,10 @@ export class MasonryGrid implements MasonryGridHost {
 
   private runLayout(): void {
     if (!this.initialized || this.layoutBlocked) return;
+    if (this.nativeActive()) {
+      this.runNativeLayout();
+      return;
+    }
 
     const started = performance.now();
     const options = this.options();
@@ -839,10 +1112,13 @@ export class MasonryGrid implements MasonryGridHost {
     const durationMs = performance.now() - started;
 
     // Signals first: updating them is what notifies a zoneless application.
-    this.columns.set(geometry.columns);
-    this.columnWidth.set(geometry.columnWidth);
-    this.contentHeight.set(height);
-    this.itemCount.set(itemCount);
+    this.state.set({
+      columns: geometry.columns,
+      columnWidth: geometry.columnWidth,
+      contentHeight: height,
+      itemCount,
+      pass: this.pass,
+    });
     this.ready.set(true);
 
     // Removals that had no exit effect to wait for are reported here, once the
@@ -910,6 +1186,22 @@ export class MasonryGrid implements MasonryGridHost {
   }
 }
 
+/** A registry entry for an item the browser, not the engine, is positioning. */
+function nativeRecord(item: MasonryItemHandle): ItemRecord {
+  return {
+    handle: item,
+    height: 0,
+    measured: false,
+    placed: false,
+    transitioned: false,
+    lastWidth: -1,
+    lastX: Number.NaN,
+    lastY: Number.NaN,
+    lastIntrinsicWidth: -1,
+    lastIntrinsicHeight: -1,
+  };
+}
+
 /** Content-box width from an observer entry, without touching the DOM. */
 function contentWidthOf(entry: ResizeObserverEntry): number {
   const box = entry.contentBoxSize?.[0];
@@ -920,4 +1212,19 @@ function contentWidthOf(entry: ResizeObserverEntry): number {
 function blockSizeOf(entry: ResizeObserverEntry): number {
   const box = entry.borderBoxSize?.[0];
   return box ? box.blockSize : (entry.target as HTMLElement).offsetHeight;
+}
+
+/**
+ * How many columns a native grid actually resolved to.
+ *
+ * Only a `columnWidth` grid needs this: `auto-fill` decides the count inside
+ * the browser, and the computed `grid-template-columns` is the only place that
+ * decision is visible. It is a single read of an already-computed value, taken
+ * once per pass, and it is reported rather than acted on.
+ */
+function countNativeColumns(element: HTMLElement): number {
+  if (typeof getComputedStyle !== 'function') return 0;
+  const template = getComputedStyle(element).gridTemplateColumns;
+  if (!template || template === 'none') return 0;
+  return template.split(/\s+/).filter((track) => track.length > 0).length;
 }

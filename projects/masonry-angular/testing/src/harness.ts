@@ -195,4 +195,18 @@ export class GridTestHarness {
   measure(sizes: ReadonlyMap<Element, Size>): void {
     for (const observer of FakeResizeObserver.instances) observer.emit(sizes);
   }
+
+  /**
+   * Every element currently being observed, across all observers.
+   *
+   * Useful for asserting what a grid *is not* doing — that a native grid
+   * measures nothing, or that a destroyed grid let go of its items.
+   */
+  observedElements(): readonly Element[] {
+    const seen = new Set<Element>();
+    for (const observer of FakeResizeObserver.instances) {
+      for (const target of observer.targets) seen.add(target);
+    }
+    return [...seen];
+  }
 }

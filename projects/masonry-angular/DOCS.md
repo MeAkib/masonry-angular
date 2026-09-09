@@ -7,6 +7,8 @@ Everything the library exposes, in detail. For installation and the five-minute 
 ## Contents
 
 - [Options](#options)
+  - [Shorthand inputs](#shorthand-inputs)
+  - [Layout mode](#layout-mode)
   - [Sizing](#sizing)
     - [Named breakpoints](#named-breakpoints)
   - [Spacing and direction](#spacing-and-direction)
@@ -17,6 +19,7 @@ Everything the library exposes, in detail. For installation and the five-minute 
 - [Items](#items)
 - [Stamps](#stamps)
 - [Sizing from CSS](#sizing-from-css)
+- [Native CSS masonry](#native-css-masonry)
 - [Reading and driving the grid](#reading-and-driving-the-grid)
 - [Styling](#styling)
 - [Server-side rendering](#server-side-rendering)
@@ -30,8 +33,54 @@ Everything the library exposes, in detail. For installation and the five-minute 
 
 ## Options
 
-Every option is optional; the defaults below are what you get from `<masonry-grid>` with no
-`[options]` at all.
+Every option is optional; the defaults below are what you get from `<masonry-grid>` with nothing set
+at all.
+
+### Shorthand inputs
+
+The five fields almost every grid sets are top-level inputs on `<masonry-grid>`, so the common case
+needs no object literal — and, because each accepts the string an HTML attribute gives it, no
+binding either:
+
+| Input         | As an attribute     | As a binding                        |                                                                              |
+| ------------- | ------------------- | ----------------------------------- | ------------------------------------------------------------------------------ |
+| `columns`     | `columns="3"`       | `[columns]="{ 0: 1, 768: 3 }"`      | Fixed count, or counts keyed by breakpoint. Mutually exclusive with `columnWidth`. |
+| `columnWidth` | `columnWidth="260"` | `[columnWidth]="cardWidth()"`       | Target column width in px; the count follows the available space.            |
+| `gutter`      | `gutter="20"`       | `[gutter]="dense() ? 8 : 24"`       | Gap in px, both axes.                                                        |
+| `gutterX`     | `gutterX="24"`      | `[gutterX]="…"`                     | Horizontal gap, when it should differ from `gutter`.                         |
+| `gutterY`     | `gutterY="8"`       | `[gutterY]="…"`                     | Vertical gap, when it should differ from `gutter`.                           |
+
+They mean exactly what the options of the same name mean — [Sizing](#sizing) and
+[Spacing and direction](#spacing-and-direction) below are the reference for both forms.
+
+`[options]` carries everything the five shorthands do not, and the two layer. Three sources are
+merged, in this order:
+
+1. application-wide defaults from [`provideNgMasonryGrid()`](#application-wide-defaults)
+2. `[options]` on the grid
+3. any shorthand input that is set
+
+So a shorthand always wins over the same field in `[options]`, and `[options]` always wins over the
+application default. Mixing them is the normal case, not a fallback:
+
+```html
+<masonry-grid columns="4" [options]="{ horizontalOrder: true, entryAnimation: false }">…</masonry-grid>
+```
+
+`columns` and `columnWidth` stay mutually exclusive _across_ the layers rather than colliding
+inside them: setting the `columnWidth` shorthand clears a `columns` arriving from `[options]` or
+from the application defaults, and setting `columns` clears an inherited `columnWidth`. That is what
+lets a single grid opt out of an application-wide `columns` map with one attribute.
+
+The merged result is validated, fully defaulted, and memoised on structural equality — so an inline
+`[options]="{ … }"` literal, which allocates a fresh object on every change detection run, costs
+nothing and never queues a layout pass on its own.
+
+### Layout mode
+
+| Option   | Type      | Default |                                                                                                                              |
+| -------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `native` | `boolean` | `false` | Let the browser lay the grid out with native CSS masonry where it supports it. See [Native CSS masonry](#native-css-masonry). |
 
 ### Sizing
 
@@ -45,9 +94,9 @@ Every option is optional; the defaults below are what you get from `<masonry-gri
 | `breakpointBasis`           | `'container' \| 'viewport'`    | `'container'`  | What breakpoints are matched against. Container-based works inside sidebars and modals.                        |
 | `fitWidth`                  | `boolean`                      | `false`        | Shrink the grid to the width its columns actually occupy, so it can be centred.                                |
 
-```ts
-{ columns: { 0: 1, 640: 2, 1024: 3, 1440: 4 } }  // responsive
-{ columnWidth: 260 }                              // as many 260px columns as fit
+```html
+<masonry-grid [columns]="{ 0: 1, 640: 2, 1024: 3, 1440: 4 }">  <!-- responsive -->
+<masonry-grid columnWidth="260">                               <!-- as many 260px columns as fit -->
 ```
 
 #### Named breakpoints
@@ -56,10 +105,10 @@ Every option is optional; the defaults below are what you get from `<masonry-gri
 is used, the count that applies is the one for the largest breakpoint at or below the measured
 width — and that width is the container's unless `breakpointBasis: 'viewport'` says otherwise.
 
-```ts
-{ columns: { sm: 1, md: 2, lg: 3, xl: 4 } }   // named
-{ columns: { 0: 1, 640: 2, 1440: 4 } }        // raw widths
-{ columns: { xs: 1, md: 2, 1440: 5 } }        // both
+```html
+<masonry-grid [columns]="{ sm: 1, md: 2, lg: 3, xl: 4 }">   <!-- named -->
+<masonry-grid [columns]="{ 0: 1, 640: 2, 1440: 4 }">        <!-- raw widths -->
+<masonry-grid [columns]="{ xs: 1, md: 2, 1440: 5 }">        <!-- both -->
 ```
 
 The default scale is Tailwind's, exported as `DEFAULT_MASONRY_BREAKPOINTS`:
@@ -90,6 +139,20 @@ validation error in development, and the message lists the names that are availa
 | `horizontalOrder`     | `boolean`           | `false`  | Fill row by row instead of always seeking the shortest column. Tidier rows, taller grid.               |
 | `direction`           | `'ltr' \| 'rtl'`    | `'ltr'`  | Lay out from the right edge.                                                                           |
 | `verticalOrigin`      | `'top' \| 'bottom'` | `'top'`  | Stack upward from the bottom edge — `masonry-layout`'s `originTop: false`. Not compatible with stamps. |
+
+The three gutter fields are also [shorthand inputs](#shorthand-inputs), so the usual case is an
+attribute:
+
+```html
+<masonry-grid columns="3" gutter="20">…</masonry-grid>              <!-- 20px on both axes -->
+<masonry-grid columns="3" gutterX="24" gutterY="8">…</masonry-grid> <!-- wider columns than rows -->
+```
+
+`direction` and `verticalOrigin` have no shorthand, so they go on `[options]`:
+
+```html
+<masonry-grid columns="3" gutter="20" [options]="{ direction: 'rtl' }">…</masonry-grid>
+```
 
 ### Motion
 
@@ -150,8 +213,9 @@ bootstrapApplication(App, {
 ```
 
 Per-grid `[options]` merge over these, nested groups included — `[options]="{ transition: { duration: 0 } }"`
-keeps the provided easing. Defaults are validated at bootstrap, so a mistake fails immediately with a
-path-annotated message rather than being silently ignored.
+keeps the provided easing — and a [shorthand input](#shorthand-inputs) on the grid wins over both.
+Defaults are validated at bootstrap, so a mistake fails immediately with a path-annotated message
+rather than being silently ignored.
 
 ## Items
 
@@ -210,14 +274,111 @@ The sizer stays in normal flow and is never positioned, so give it no height. It
 over both `columns` and `columnWidth`, and `stretchColumns` does not apply — the element states the
 width, so the grid honours it exactly. A development build warns if you set a conflicting option.
 
+## Native CSS masonry
+
+CSS Grid Level 3 adds a real masonry layout, spelled `display: grid-lanes`. Safari 26.4 ships it
+unflagged; Chromium exposes an earlier prototype spelled `display: masonry` behind a flag. As of
+September 2026 that is around 11% of users, so this is an enhancement for the browsers that have it,
+not a replacement for the engine — every other browser keeps the JavaScript path and looks the same.
+
+It is off by default. `native: true` opts a grid in:
+
+```html
+<masonry-grid columnWidth="260" gutter="20" [options]="{ native: true }">…</masonry-grid>
+```
+
+Where the browser supports it, the library does nothing: no `ResizeObserver` on items, no measuring,
+no width writes, no transforms, no waiting on images to decode, no solver. The browser packs the
+grid and re-packs it on resize, on content changes and as images load, on its own.
+
+### Why the switch lives in CSS
+
+The decision is an `@supports` rule in the component's stylesheet rather than a check in JavaScript:
+
+```css
+@supports (display: grid-lanes) {
+  :host(.masonry-grid--native) {
+    display: grid-lanes;
+    grid-template-columns: var(--masonry-native-columns);
+    column-gap: var(--masonry-gutter-x);
+    row-gap: var(--masonry-gutter-y);
+  }
+}
+```
+
+A browser that has the feature therefore applies the real masonry layout to the server's HTML on
+first paint, before any JavaScript has loaded, and there is nothing to hydrate. A JavaScript check
+could not do that: the server does not know what the visitor's browser supports, and by the time the
+client found out, the first paint would already have happened. A browser that matches neither rule
+keeps the multi-column fallback and hands over to the engine exactly as before.
+
+Two spellings are accepted because the feature was renamed mid-flight — `grid-lanes` is the final
+syntax, `masonry` is Chromium's prototype — and they take the same `grid-template-columns` and
+`gap`, so the two rules are identical and a browser drops the one it cannot parse.
+
+Firefox's much older `grid-template-rows: masonry` is deliberately **not** accepted: it is a
+different mechanism layered on a regular grid, it sits behind a non-default flag, and it is being
+replaced by `grid-lanes` rather than shipped. Those browsers get the JavaScript engine, which is the
+right answer for them anyway.
+
+### How the column count is decided
+
+`columnWidth` and a fixed `columns` become a single declaration that already describes the whole
+responsive behaviour, so those grids observe nothing at all:
+
+| Configuration       | `grid-template-columns`                            |
+| ------------------- | -------------------------------------------------- |
+| `columnWidth="260"` | `repeat(auto-fill, minmax(min(100%, 260px), 1fr))` |
+| `columns="4"`       | `repeat(4, 1fr)`                                   |
+
+The `min(100%, …)` is what keeps a single narrow column from overflowing its container.
+
+A breakpoint map is the one case CSS cannot express on its own, because the counts are yours rather
+than derived from a track size. Such a grid keeps **one** container `ResizeObserver` alive to
+re-evaluate which stop applies and rewrite `repeat(n, 1fr)`. Either way nothing per-item is observed.
+
+`[masonryColSpan]="2"` still works: the item directive writes `grid-column: span 2` and the browser
+honours it.
+
+### What the browser cannot honour
+
+The browser owns the packing algorithm while it is in charge, so options that describe a different
+algorithm simply do not apply: `horizontalOrder`, `verticalOrigin: 'bottom'`, `fitWidth`,
+`stretchColumns: false` and `masonryGridStamp`. A development build warns once, naming the ones it
+found, rather than leaving you to wonder why `fitWidth` stopped doing anything. `[masonryIgnore]` is
+inert for the same reason — the grid never walks the items, so there is nothing to take one out of.
+
+Set `native: false` on a grid that needs any of them; nothing else about it changes.
+
+### Reading it back
+
+`nativeActive()` is `true` when the browser is actually in charge — `native: true` _and_ the feature
+present. It is always `false` on the server. `state().columnWidth` is `0` in that mode: the browser
+owns the track sizes and never reports them, and a number the library did not compute would be a
+guess. `state().columns` stays accurate, read back from the resolved `grid-template-columns` for a
+`columnWidth` grid.
+
+`supportsNativeMasonry()` is exported if you need the same answer elsewhere. It returns `false` on
+the server, where the question is about the wrong machine.
+
 ## Reading and driving the grid
 
 ```html
-<masonry-grid #grid="masonryGrid" (layoutComplete)="onLayout($event)">…</masonry-grid>
-<p>{{ grid.columns() }} columns at {{ grid.columnWidth() }}px</p>
+<masonry-grid #grid="masonryGrid" columns="3" (layoutComplete)="onLayout($event)">…</masonry-grid>
+<p>{{ grid.state().columns }} columns at {{ grid.state().columnWidth }}px</p>
 ```
 
-Signals: `ready()`, `columns()`, `columnWidth()`, `contentHeight()`, `itemCount()`.
+Signals:
+
+|                  |                                                                                                                                                          |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ready()`        | `true` once the browser has completed the first real layout pass.                                                                                        |
+| `state()`        | `{ columns, columnWidth, contentHeight, itemCount, pass }`, written as one value at the end of every pass. `pass` is `0` before the first.                |
+| `nativeActive()` | `true` while the browser is laying the grid out itself. See [Native CSS masonry](#native-css-masonry).                                                    |
+
+`state()` is one signal rather than five because those values are written together and almost always
+read together — and because `columns`, `columnWidth` and `gutter` now name the grid's
+[inputs](#shorthand-inputs), which is what a reader expects those names to mean.
 
 `items()` returns the registered item elements in DOM order — the replacement for
 `getItemElements()`. It is the registry, so it includes ignored and not-yet-measured items.
@@ -261,7 +422,9 @@ The grid sets two custom properties on its host, so your CSS can follow the reso
 `--masonry-column-width`, `--masonry-columns`, plus `--masonry-gutter-x` / `--masonry-gutter-y`.
 
 Host classes: `.masonry-grid`, `.masonry-grid--ready` once the client has taken over, `.masonry-grid--fallback`
-while the multi-column approximation is showing. Items carry `.masonry-item` and stamps `.masonry-stamp`.
+while the multi-column approximation is showing, and `.masonry-grid--native` when `native: true` is
+set — that last one is what the `@supports` rules key off, so it is present even in browsers that
+ignore them. Items carry `.masonry-item` and stamps `.masonry-stamp`.
 
 ## Server-side rendering
 
@@ -270,6 +433,10 @@ useful without JavaScript and search engines see real content. On hydration the 
 absolute positioning in a single synchronous write, so there is no frame in which items are half
 positioned. Pair it with `entryAnimation.animateInitial: false` to avoid re-animating content the
 visitor can already see.
+
+With [`native: true`](#native-css-masonry) there is not even an approximation to swap out in a
+browser that supports it: the `@supports` rule applies the real layout to the server's HTML on first
+paint, and the first client pass has nothing to do but publish `state()`.
 
 ## Testing
 
@@ -343,6 +510,12 @@ const { positions, contentHeight } = engine.solve({
   or paint. Per-element writes are skipped when the value has not changed.
 - **Change detection stays out of it.** The layout loop runs outside `NgZone` and writes to the DOM
   directly, so it never triggers a component re-render.
+- **None of it, where the browser can do the work.** With [`native: true`](#native-css-masonry) in a
+  browser that supports `display: grid-lanes`, there is no observer, no pass and no per-item write at
+  all.
+
+The solver itself places 10,000 items in 0.16 ms and 50,000 in 0.83 ms, and in the steady state
+allocates one small object per pass and nothing else.
 
 ## Bundle size
 
@@ -352,17 +525,24 @@ external, reported as gzip — what a CDN actually sends. The production row is 
 
 | Library                    | Own code   | Runtime deps | Total      |
 | -------------------------- | ---------- | ------------ | ---------- |
-| **masonry-angular**        | **6.2 KB** | none         | **6.2 KB** |
+| **masonry-angular**        | **8.1 KB** | none         | **8.1 KB** |
 | `masonry-layout` (vanilla) | —          | 7.2 KB       | 7.2 KB     |
 | `angular2-masonry`         | 1.1 KB     | 7.2 KB       | 8.2 KB     |
 | `ngx-masonry`              | 1.5 KB     | 7.2 KB       | 8.6 KB     |
 
-This library ships less code than the layout engine the alternatives wrap, before either of them
-adds an Angular binding. That 7.2 KB is also not one package but six — `masonry-layout` pulls in
-`outlayer`, `get-size`, `ev-emitter`, `desandro-matches-selector` and `fizzy-ui-utils` — none of
-which a wrapper can fix a bug in or ship a feature through. Here the layout path is one dependency
-you control, and it buys zoneless scheduling, `ResizeObserver`, transform positioning and DOM-order
-correctness that the wrapped stack cannot express at any size.
+That is roughly 0.9 KB more than the previous release, and the increase is the whole of the
+[shorthand inputs](#shorthand-inputs) with their merge order and the
+[native CSS masonry](#native-css-masonry) path. The first removes an object literal from the common
+case; the second lets a browser that has `display: grid-lanes` skip the engine entirely, which is a
+strange trade to refuse over 0.9 KB.
+
+It leaves the library a little larger than the bare layout engine the alternatives wrap, and still
+smaller than either of them once they have added their Angular binding. That 7.2 KB is also not one
+package but six — `masonry-layout` pulls in `outlayer`, `get-size`, `ev-emitter`,
+`desandro-matches-selector` and `fizzy-ui-utils` — none of which a wrapper can fix a bug in or ship
+a feature through. Here the layout path is one dependency you control, and it buys zoneless
+scheduling, `ResizeObserver`, transform positioning, native-layout handoff and DOM-order correctness
+that the wrapped stack cannot express at any size.
 
 ### Where the validation went
 
@@ -380,7 +560,8 @@ each annotated with its path:
 
 That check runs in development and throws. In production it does not run, because it does not exist:
 the validator lives behind `ngDevMode`, which Angular replaces with `false` at build time, so the
-bundler drops the code as unreachable. A development build carries it and measures 7.8 KB.
+bundler drops the code as unreachable. A development build carries it, and measures correspondingly
+more; `npm run size` reports both rows.
 
 This is a deliberate trade. Invalid options are a programmer error — TypeScript catches most of them
 at compile time, and the rest surface on first render. None of it is worth re-checking on every end
@@ -394,8 +575,10 @@ Both wrap David DeSandro's `masonry-layout`. This library replaces it.
 |                    | Those                                                    | This                                             |
 | ------------------ | -------------------------------------------------------- | ------------------------------------------------ |
 | Runtime deps       | `masonry-layout`, which is 6 packages                    | none, and no peer deps beyond Angular            |
-| Layout code (gzip) | 7.2 KB across 6 packages                                 | 6.2 KB in one                                    |
+| Layout code (gzip) | 7.2 KB across 6 packages                                 | 8.1 KB in one                                    |
 | API                | NgModule, decorators                                     | standalone, signals                              |
+| Configuration      | one options object                                       | attributes for the common five, `[options]` for the rest |
+| Native CSS masonry | no                                                       | opt-in, where the browser has it                 |
 | Zoneless           | no                                                       | yes                                              |
 | Item order         | registration order; needs `reloadItems()` after reorders | derived from the DOM every pass                  |
 | Images             | `load` listeners, or a blocking "ordered" mode           | `decode()`, non-blocking, order always preserved |

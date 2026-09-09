@@ -8,6 +8,12 @@ Angular workspace containing the **masonry-angular** library and a runnable exam
 | `masonry-angular/testing` | `projects/masonry-angular/testing` | Test doubles, published as a secondary entry point.                                                                           |
 | `demo`                    | `projects/demo`                    | The example application. [Docs →](projects/demo/README.md)                                                                    |
 
+The library positions items with its own solver — no `masonry-layout`, no jQuery — and is configured
+by plain attributes (`<masonry-grid columns="3" gutter="20">`), with `[options]` for everything the
+five shorthands do not cover. Each pass publishes one `state()` signal, and with `native: true` the
+whole layout is handed to browsers that ship `display: grid-lanes`, decided by an `@supports` rule so
+server-rendered HTML is already correct on first paint. 8.1 KB gzipped, no runtime dependencies.
+
 ## Getting started
 
 ```bash
@@ -50,6 +56,7 @@ projects/masonry-angular/
 │   ├── core/
 │   │   ├── layout-engine.ts      # the solver — pure, no Angular, no DOM
 │   │   ├── column-resolver.ts    # container width + options -> column geometry
+│   │   ├── native.ts             # CSS masonry detection and its grid-template-columns
 │   │   ├── scheduler.ts          # coalesces every invalidation into one frame
 │   │   └── host.ts               # the contract between the grid and its directives
 │   ├── schemas/
@@ -57,6 +64,7 @@ projects/masonry-angular/
 │   │   └── parse.ts              # parsing, merging and structural comparison
 │   ├── directives/
 │   │   ├── masonry-grid-item.ts  # [masonryGridItem]
+│   │   ├── masonry-grid-sizer.ts # [masonryGridSizer]
 │   │   └── masonry-grid-stamp.ts # [masonryGridStamp]
 │   ├── masonry-grid.ts           # <masonry-grid>
 │   └── providers.ts              # provideNgMasonryGrid()
@@ -65,7 +73,9 @@ projects/masonry-angular/
 
 The solver is deliberately isolated from Angular and from the DOM. It takes measured boxes in and
 returns coordinates out, which keeps it trivially unit-testable and lets the component split every
-layout pass into one read phase followed by one write phase.
+layout pass into one read phase followed by one write phase. `core/native.ts` is the other half of
+that story: where the browser can do the layout itself, it decides so in one memoised feature check
+and the component never runs a pass at all.
 
 For how the pieces fit together — the layout pass, the invalidation model, the solver and the
 performance invariants — see [ARCHITECTURE.md](ARCHITECTURE.md).

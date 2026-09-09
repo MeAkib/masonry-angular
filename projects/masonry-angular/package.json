@@ -4,16 +4,16 @@
   "description": "Zero-dependency masonry layout for Angular. Signal-based, zoneless, SSR-safe.",
   "keywords": [
     "angular",
+    "masonry-angular",
+    "masonry-layout-angular",
+    "angular-masonry",
+    "masonry-grid-angular",
     "masonry",
     "masonry-layout",
     "grid",
     "masonry-grid",
     "cascading-grid",
-    "waterfall",
-    "layout",
-    "signals",
-    "zoneless",
-    "ssr"
+    "layout"
   ],
   "homepage": "https://github.com/MeAkib/masonry-angular#readme",
   "repository": {

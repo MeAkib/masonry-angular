@@ -13,7 +13,7 @@ This document is about the _implementation_. For the public API and options, see
 
 - [The one-sentence version](#the-one-sentence-version)
 - [Module graph](#module-graph)
-- [The four collaborators](#the-four-collaborators)
+- [The five collaborators](#the-five-collaborators)
 - [Invalidation: everything funnels into one frame](#invalidation-everything-funnels-into-one-frame)
 - [Anatomy of a layout pass](#anatomy-of-a-layout-pass)
 - [Bootstrap: why the first layout takes two passes](#bootstrap-why-the-first-layout-takes-two-passes)
@@ -25,6 +25,7 @@ This document is about the _implementation_. For the public API and options, see
 - [Options pipeline](#options-pipeline)
 - [Change detection and zones](#change-detection-and-zones)
 - [Server-side rendering and the fallback handoff](#server-side-rendering-and-the-fallback-handoff)
+- [Native layout: handing the grid to the browser](#native-layout-handing-the-grid-to-the-browser)
 - [Performance invariants](#performance-invariants)
 - [Testing model](#testing-model)
 - [Extension points](#extension-points)
@@ -64,19 +65,20 @@ flowchart TD
     HOST["core/host.ts<br/><small>MasonryGridHost (abstract)</small>"]
     ENGINE["core/layout-engine.ts<br/><small>pure solver</small>"]
     RESOLVER["core/column-resolver.ts<br/><small>width → geometry</small>"]
+    NATIVE["core/native.ts<br/><small>feature detection + CSS tracks</small>"]
     SCHED["core/scheduler.ts<br/><small>FrameScheduler</small>"]
     DEF["schemas/defaults.ts<br/><small>frozen option defaults</small>"]
     PARSE["schemas/parse.ts<br/><small>merge / validate / resolve</small>"]
     PROV["providers.ts<br/><small>provideNgMasonryGrid()</small>"]
     MODELS["models/<br/><small>every data shape — types only</small>"]
 
-    MG --> HOST & ENGINE & RESOLVER & SCHED & PARSE & PROV
+    MG --> HOST & ENGINE & RESOLVER & NATIVE & SCHED & PARSE & PROV
     ITEM --> HOST
     STAMP --> HOST
     SIZER --> HOST
     PARSE --> DEF
     DEF -.-> MODELS
-    MG & ITEM & HOST & ENGINE & RESOLVER & PARSE -.->|type-only| MODELS
+    MG & ITEM & HOST & ENGINE & RESOLVER & NATIVE & PARSE -.->|type-only| MODELS
     PROV --> PARSE
     MG -.->|provides itself as| HOST
 
@@ -110,17 +112,25 @@ framework's renderer.
 
 ---
 
-## The four collaborators
+## The five collaborators
 
-| Piece                   | File                      | Responsibility                                       | Knows about             |
-| ----------------------- | ------------------------- | ---------------------------------------------------- | ----------------------- |
-| `MasonryGrid`           | `masonry-grid.ts`         | Owns the DOM, the observers, the pass, and all state | Everything              |
-| `FrameScheduler`        | `core/scheduler.ts`       | Collapses N invalidations into 1 callback per frame  | `requestAnimationFrame` |
-| `resolveColumnGeometry` | `core/column-resolver.ts` | `(width, options) → { columns, columnWidth }`        | Options only            |
-| `MasonryLayoutEngine`   | `core/layout-engine.ts`   | `(measured boxes) → coordinates`                     | Nothing                 |
+| Piece                    | File                      | Responsibility                                       | Knows about             |
+| ------------------------ | ------------------------- | ---------------------------------------------------- | ----------------------- |
+| `MasonryGrid`            | `masonry-grid.ts`         | Owns the DOM, the observers, the pass, and all state | Everything              |
+| `FrameScheduler`         | `core/scheduler.ts`       | Collapses N invalidations into 1 callback per frame  | `requestAnimationFrame` |
+| `resolveColumnGeometry`  | `core/column-resolver.ts` | `(width, options) → { columns, columnWidth }`        | Options only            |
+| `MasonryLayoutEngine`    | `core/layout-engine.ts`   | `(measured boxes) → coordinates`                     | Nothing                 |
+| `supportsNativeMasonry`… | `core/native.ts`          | `(options) → CSS tracks`, and one feature check      | `CSS.supports`, options |
 
 The component is deliberately the only stateful, DOM-touching, Angular-aware object. The other
-three are pure or near-pure and can be reasoned about — and tested — in isolation.
+four are pure or near-pure and can be reasoned about — and tested — in isolation.
+
+`core/native.ts` is the smallest of them and holds a single piece of mutable state: the memoised
+answer to `CSS.supports('display', 'grid-lanes')`, computed at most once per document and only if
+something asks. Everything else in the file — `nativeTemplateColumns`, `nativeColumnsAreStatic`,
+`nativeUnsupportedOptions` — is a pure function of the resolved options. Keeping the detection in one
+place is also what keeps the SSR guard in one place: there is exactly one expression in the library
+that can wrongly claim native support on a server.
 
 ---
 
@@ -234,7 +244,7 @@ flowchart TD
     HOSTW --> FINISH["finishPass()"]
 
     FINISH --> ANIM["animateEntry() + enableTransitionsNextFrame()"]
-    ANIM --> SIGNALS["set columns, columnWidth,<br/>contentHeight, itemCount, ready"]
+    ANIM --> SIGNALS["state.set({ columns, columnWidth,<br/>contentHeight, itemCount, pass })<br/>ready.set(true)"]
     SIGNALS --> OUT["zone.run → layoutComplete.emit()"]
     OUT --> DONE([done])
 
@@ -632,16 +642,20 @@ Un-animated removals are reported from `finishPass()` rather than immediately �
 
 ## Options pipeline
 
-Options flow through four stages, and each exists for a distinct reason.
+There are six configuration inputs — `columns`, `columnWidth`, `gutter`, `gutterX` and `gutterY`,
+plus the raw `[options]` object — and exactly one thing reads them: the `options()` computed.
+Everything else in the component, and every directive through `MasonryGridHost`, reads `options()`
+and never an input.
 
 ```mermaid
 flowchart TD
-    G["provideNgMasonryGrid(defaults)<br/><small>validated eagerly at bootstrap</small>"] --> M
-    C["[options] input on the component"] --> T["input transform:<br/>resolveOptions()"]
-    T --> ID{"structurally equal to<br/>last raw value?"}
-    ID -->|yes| REUSE(["return the identical<br/>previous object"])
-    ID -->|no| M["mergeMasonryGridOptions(global, local)<br/><small>merges unparsed input</small>"]
-    M --> V{"ngDevMode?"}
+    SH["columns / columnWidth / gutter<br/>gutterX / gutterY<br/><small>transform: coerceShorthand</small>"] --> CMP
+    C["[options] input<br/><small>public only as optionsInput()</small>"] --> CMP
+    G["provideNgMasonryGrid(defaults)<br/><small>validated eagerly at bootstrap</small>"] --> CMP
+
+    CMP["computed(): mergeMasonryGridOptions(<br/>globalDefaults, optionsInput(), shorthand)<br/><small>merges unparsed input, lowest precedence first</small>"] --> ID{"masonryOptionsEqual<br/>to the last merged value?"}
+    ID -->|yes| REUSE(["return the identical<br/>previous resolved object"])
+    ID -->|no| V{"ngDevMode?"}
     V -->|yes| VAL["validate() → throw<br/>MasonryGridOptionsError with paths"]
     V -->|no| R
     VAL --> R["resolve() — fill from<br/>DEFAULT_MASONRY_GRID_OPTIONS"]
@@ -651,16 +665,32 @@ flowchart TD
     style VAL fill:#c92a2a,color:#fff
 ```
 
-**Identity caching is what makes inline literals free.** `[options]="{ gutter: 16 }"` allocates a
-fresh object on every change detection run. `resolveOptions()` compares it structurally against the
-last raw value and, on a match, returns the _identical_ previous resolved object — so the input
-signal sees no change, no downstream `computed` recomputes, and no layout is queued.
+**The shorthands are ordinary inputs with a coercion transform.** `coerceShorthand` turns the string
+an HTML attribute produces into a number, which is what lets `columns="3"` work with no binding and
+no object literal, while `[columns]="{ 0: 1, 768: 3 }"` passes through untouched. A string that is
+_not_ a number is deliberately passed through as well rather than coerced to `NaN`: the dev-mode
+validator downstream then reports it with a precise path, which is far more useful than a silently
+wrong column count.
+
+**Precedence is the argument order of one merge call.** Application defaults, then `[options]`, then
+whichever shorthands are set — so the narrowest declaration wins, and a grid can override one field
+of an application-wide configuration without restating the rest.
 
 **Merging happens before validation, on unparsed input.** That is what lets a component override a
 single field of a nested group without restating its siblings — `{ ssr: { columns: 3 } }` keeps the
 provided `fallback`. `mergeMasonryGridOptions` also clears the counterpart when one of the mutually
-exclusive `columns` / `columnWidth` pair is set, so a local override does not trip the exclusivity
-check against a global default.
+exclusive `columns` / `columnWidth` pair is set at any layer, so a `columnWidth="260"` attribute
+retires an inherited `columns` map instead of tripping the exclusivity check against it.
+
+**Identity caching is still what makes inline literals free — it has just moved.** It used to sit in
+an input transform on `options`; now it sits inside the computed, because the value being cached is
+no longer a single input's. `[options]="{ gutter: 16 }"` allocates a fresh object on every change
+detection run, so the merge produces a fresh object too. `resolveOptions()` compares that merged
+object structurally against the last one and, on a match, returns the _identical_ previous
+`ResolvedMasonryGridOptions`. A `computed` compares its new value to its old with `Object.is`, so an
+identical reference means the computed did not change: no dependent `computed` recomputes, the
+options `effect` does not re-run, and no layout pass is queued. The deep compare is the price, and it
+is paid once per change detection run instead of once per pass.
 
 **Validation is development-only, by construction.** Every check is inside
 `if (typeof ngDevMode === 'undefined' || ngDevMode)`. Production builds replace `ngDevMode` with
@@ -682,10 +712,12 @@ The grid is `ChangeDetectionStrategy.OnPush` and works identically zoneful or zo
 - **All plumbing runs outside Angular.** Observer construction, subscription and the `resize`
   listener are wrapped in `zone.runOutsideAngular()`. A `ResizeObserver` callback firing on every
   frame of a drag never schedules change detection.
-- **Signals are the notification channel.** `finishPass()` sets `columns`, `columnWidth`,
-  `contentHeight`, `itemCount` and `ready`. Writing a signal is what makes a zoneless application
-  re-render, and the host bindings (`--masonry-gutter-x`, `.masonry-grid--ready`, …) read from
-  signals and `computed`s.
+- **Signals are the notification channel.** `finishPass()` writes `state` — one object carrying
+  `columns`, `columnWidth`, `contentHeight`, `itemCount` and `pass` — and then `ready`. Writing a
+  signal is what makes a zoneless application re-render, and the host bindings
+  (`--masonry-gutter-x`, `.masonry-grid--ready`, …) read from signals and `computed`s. One write
+  rather than five also means a template reading two fields of the last pass cannot observe them
+  disagreeing.
 - **`zone.run()` wraps only output emissions** — `layoutComplete`, `removeComplete`, `itemsLoaded`.
   It is a no-op under zoneless change detection and the correct bridge back into Angular for
   zone-based applications, so a consumer's handler runs in the zone it expects.
@@ -721,6 +753,118 @@ already painted, so animating them in is a regression, not a flourish.
 
 ---
 
+## Native layout: handing the grid to the browser
+
+With `native: true`, a browser that implements CSS masonry does the entire layout and the library
+withdraws. Everything below is about how the withdrawal is arranged so that it is correct on the
+server, correct before hydration, and complete rather than partial.
+
+```mermaid
+flowchart TD
+    OPT["native: true"] --> CLS["host class .masonry-grid--native<br/><small>always, regardless of support</small>"]
+    CLS --> CSS{"@supports<br/>(display: grid-lanes)<br/>or (display: masonry)"}
+    CSS -->|matches| BROWSER["browser lays out<br/><small>on the server's HTML, first paint</small>"]
+    CSS -->|no match| FB["multi-column fallback keeps painting"]
+
+    CLS --> JS{"supportsNativeMasonry()<br/><small>client only</small>"}
+    JS -->|true| NAT["initializeNative()<br/><small>no item observers, no engine</small>"]
+    JS -->|false| ENG["initialize() → the JavaScript engine"]
+
+    style BROWSER fill:#2b8a3e,color:#fff
+    style NAT fill:#2b8a3e,color:#fff
+```
+
+### The switch is in CSS; the JavaScript only agrees with it
+
+The decision that matters is made by an `@supports` rule in the component's `styles`, not by
+JavaScript. That is the whole point of the feature. A `@supports` rule is evaluated by the browser
+as it parses the stylesheet, so a server-rendered document is laid out — really laid out, not
+approximated — on first paint, with no measuring pass and nothing to hydrate. A JavaScript check
+could not achieve that at any speed: the server does not know what the visitor's browser supports,
+and by the time the client had found out, the first paint would already be on screen.
+
+The host class `.masonry-grid--native` is bound to `options().native` alone, never to feature
+detection, so it is present in every browser and the stylesheet is free to decide. Multi-column
+properties do not apply to a grid container, so the fallback's `column-count` goes inert on its own
+in the browsers where a rule wins — the two renderings cannot both be live, and nothing has to
+sequence them.
+
+JavaScript feature-detects anyway, in `supportsNativeMasonry()`, because it has a different question
+to answer: not "how should this paint" but "must the engine run". `nativeActive()` — `options().native
+&& supportsNativeMasonry()` — is what gates observers, measurement and the solver. The two are
+separate expressions of one question and have to be kept in step, because a mismatch is broken in
+either direction: a stylesheet that matched while the JavaScript did not would leave the engine
+positioning items inside a grid the browser is already packing, and JavaScript that matched while no
+rule did would leave the grid unpositioned. Both spellings are therefore tested in both places, and
+only those spellings:
+
+- `display: grid-lanes` — the syntax the CSS Working Group settled on and what Safari 26.4 ships.
+- `display: masonry` — Chromium's earlier prototype, still what its flag exposes. It takes the same
+  `grid-template-columns` and `gap`, so the two `@supports` blocks are identical declarations and a
+  browser silently drops the one it cannot parse.
+
+Firefox's `grid-template-rows: masonry` is deliberately excluded. It is a different mechanism —
+masonry as a track-sizing mode on a regular grid, rather than a display type — it is behind a
+non-default flag, and it is being replaced by `grid-lanes` rather than shipped. Accepting it would
+mean a second code path with its own semantics, maintained for a syntax that is on its way out.
+Those browsers get the JavaScript engine, which is the correct answer for them.
+
+### What `initializeNative()` and `runNativeLayout()` do
+
+`initialize()` forks immediately on `nativeActive()`, so the native path never constructs the
+observer that watches items, never registers the viewport listener, and never reaches `runLayout()`.
+
+`initializeNative()` does three things and stops: it emits the dev-mode warning for options the
+browser cannot honour, it creates one container observer **only** if the column count is
+breakpoint-driven, and it drops the fallback class. `runNativeLayout()` is what a "pass" means in
+this mode: resolve the column count, publish `state`, set `ready`, emit `layoutComplete`. There is
+no read phase, no signature, no solve, and no write to any item.
+
+The column count is resolved three ways, and only one of them costs anything:
+
+| `columns` / `columnWidth` | `grid-template-columns`                   | How the count is known                          |
+| ------------------------- | ----------------------------------------- | ----------------------------------------------- |
+| `columnWidth: 260`        | `repeat(auto-fill, minmax(min(100%, 260px), 1fr))` | Read back from the computed style, for reporting only |
+| `columns: 4`              | `repeat(4, 1fr)`                          | It is the option                                |
+| `columns: { 0: 1, … }`    | `repeat(n, 1fr)`                          | One container `ResizeObserver` → `resolveColumnGeometry` |
+
+The first two are what `nativeColumnsAreStatic()` recognises: a single declaration that already
+describes the whole responsive behaviour, so the browser re-lays-out on resize, on content changes
+and as images decode without anyone being told. A breakpoint map is the one case CSS cannot express
+on its own, because the counts are the application's rather than derived from a track size — so that
+grid, and only that grid, keeps one observer alive to re-evaluate which stop applies. It observes
+the container, never an item.
+
+`state().columnWidth` is `0` under native layout. The browser owns the track sizes and does not
+report them; publishing a number the library did not compute would be a fabrication, and `0` is the
+honest answer. The count, by contrast, is real — for a `columnWidth` grid it is read once per pass
+from the resolved `grid-template-columns`, which is an already-computed value and the only place the
+browser's `auto-fill` decision is visible.
+
+Items are still registered, so `items()` and `state().itemCount` stay truthful, but their records are
+inert: never observed, never measured, never promoted to absolute positioning.
+
+### What changes in the item directive
+
+The item directive is where the withdrawal has to be complete rather than partial, because it runs
+before the grid has done anything.
+
+- **No hidden state.** `applyInitialStyles()` treats a `native` grid exactly like the multi-column
+  fallback — `break-inside: avoid; width: 100%` — and never `visibility: hidden`, whatever
+  `ssr.fallback` says. In a browser with `grid-lanes` the server's HTML is already correctly laid
+  out, so hiding items would hide a finished layout waiting for a script that has nothing to do; in a
+  browser without it, these are precisely the styles the fallback needs. Both properties are
+  harmless inside a grid container, so this runs in the constructor with no feature detection at all.
+- **Spans go to the browser.** Instead of the grid computing a pixel width from the span, the
+  directive writes `grid-column: span n` on its own element and the browser resolves it. The property
+  is inert in a non-grid container, so it too can be written before detection has an answer.
+- **No image awaiting.** `awaitImages()` returns early when `nativeActive()`. The reason to hold an
+  item back is that the engine must measure it at its final height; a browser that re-packs when an
+  image changes an item's height needs no such promise, and creating one per image would cost
+  something to buy nothing.
+
+---
+
 ## Performance invariants
 
 These are the properties the implementation is built to preserve. Breaking one is a regression even
@@ -739,6 +883,9 @@ if every test still passes.
 | Long grids do not promote every item to a layer | `translate`, not `translate3d`                                               |
 | Breakpoint keys are sorted once per map         | `WeakMap` cache keyed by object identity                                     |
 | Validation costs production zero bytes          | `ngDevMode` guards                                                           |
+| Native layout observes nothing for a static column configuration | `nativeColumnsAreStatic()` — `columnWidth` and a fixed `columns` are each one CSS declaration |
+| Native layout observes at most the container    | The breakpoint-map branch of `initializeNative()`; no item is ever observed  |
+| Native layout does no per-item work at all      | `nativeActive()` forks before `addItem()` measures, before `runLayout()` solves, and before `awaitImages()` allocates |
 
 The scratch buffers reused across passes — `ordered`, `measured`, `stampBoxes`, `entering` — are
 truncated with `.length = 0` rather than reallocated, and `fillMeasured()` mutates the existing slot
@@ -811,4 +958,7 @@ directives will drive it unmodified.
 | Exit effects animate a clone                            | Exits are possible at all under Angular's teardown order               | Clone is inert; the effect cannot react to component state                        |
 | `verticalOrigin: 'bottom'` implemented as a reflection  | Exact, and one code path instead of two                                | Stamps are unsupported in that mode (dev warning)                                 |
 | `transform` for position, CSS transition for movement   | Compositor-only movement; no layout thrash                             | Consumer keyframes must use `translate`/`scale`/`rotate`, never `transform`       |
-| Structural identity caching on `[options]`              | Inline object literals cost nothing                                    | A deep compare on each change detection run when the value differs                |
+| Structural identity caching on the merged options       | Inline object literals cost nothing                                    | A deep compare on each change detection run when the value differs                |
+| Native CSS masonry is opt-in, not automatic             | A grid lays out identically in every browser until you say otherwise   | The 11% of users whose browser could do it themselves do not, unless asked        |
+| Five readback signals collapsed into one `state()`      | One consistent snapshot per pass; the names `columns` and `columnWidth` freed for the inputs | A template reading one field re-renders when any field changes    |
+| Shorthand inputs alongside `[options]`                  | The common grid is plain attributes — no binding, no object literal    | Two ways to say the same thing, and a merge order that has to be documented       |

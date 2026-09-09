@@ -67,6 +67,7 @@ function resolve(input: MasonryGridOptions): ResolvedMasonryGridOptions {
     verticalOrigin: input.verticalOrigin ?? d.verticalOrigin,
     fitWidth: input.fitWidth ?? d.fitWidth,
     breakpointBasis: input.breakpointBasis ?? d.breakpointBasis,
+    native: input.native ?? d.native,
 
     transition: { ...d.transition, ...input.transition },
     entryAnimation:
@@ -289,6 +290,7 @@ function validate(input: MasonryGridOptions): readonly MasonryOptionIssue[] {
   collector.enum('verticalOrigin', value['verticalOrigin'], ['top', 'bottom']);
   collector.boolean('fitWidth', value['fitWidth']);
   collector.enum('breakpointBasis', value['breakpointBasis'], ['container', 'viewport']);
+  collector.boolean('native', value['native']);
 
   const transition = value['transition'];
   if (transition !== undefined) {

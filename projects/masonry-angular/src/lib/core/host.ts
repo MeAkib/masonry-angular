@@ -14,6 +14,16 @@ export abstract class MasonryGridHost {
   abstract readonly options: Signal<ResolvedMasonryGridOptions>;
   /** `true` once the client has taken over layout from the SSR fallback. */
   abstract readonly ready: Signal<boolean>;
+  /**
+   * `true` when the browser is laying this grid out itself with native CSS
+   * masonry, so the directives can skip work the browser already does — item
+   * measurement, image awaiting, and the pre-layout hidden state.
+   *
+   * Always `false` on the server, where the answer would be about the wrong
+   * machine; the stylesheet's `@supports` rule is what makes server output
+   * correct.
+   */
+  abstract readonly nativeActive: Signal<boolean>;
 
   abstract addItem(item: MasonryItemHandle): void;
   abstract removeItem(item: MasonryItemHandle): void;

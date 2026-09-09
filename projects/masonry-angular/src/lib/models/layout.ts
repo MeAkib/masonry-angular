@@ -66,3 +66,32 @@ export interface MasonryLayoutSolution {
   /** Resolved column heights after the pass. Length equals `columns`. */
   readonly columnHeights: Float64Array;
 }
+
+/**
+ * What the last pass produced, as a single signal.
+ *
+ * These values are written together at the end of every pass and are almost
+ * always read together, so one signal is both cheaper and easier to consume
+ * than five — and it leaves `columns`, `columnWidth` and `gutter` free to be
+ * the grid's *inputs*, which is where a reader expects to find those names.
+ *
+ * ```html
+ * <masonry-grid #grid columns="3">…</masonry-grid>
+ * <p>{{ grid.state().itemCount }} items in {{ grid.state().columns }} columns</p>
+ * ```
+ */
+export interface MasonryGridState {
+  /** Resolved column count for the current container width. */
+  readonly columns: number;
+  /**
+   * Resolved width of a single column in CSS pixels. `0` under native CSS
+   * layout, where the browser owns the track sizes and never reports them.
+   */
+  readonly columnWidth: number;
+  /** Height of the laid-out content in CSS pixels, excluding trailing gutter. */
+  readonly contentHeight: number;
+  /** Number of items positioned by the most recent pass. */
+  readonly itemCount: number;
+  /** How many passes have completed. `0` before the first. */
+  readonly pass: number;
+}
