@@ -46,3 +46,6 @@ Thumbs.db
 # AI agents
 /.agents
 skills-lock.json
+
+# temp directory used by `npm run verify:ssr`
+.ssr-probe-*/

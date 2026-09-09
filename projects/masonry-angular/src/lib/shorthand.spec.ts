@@ -49,9 +49,7 @@ class ShorthandHost {
   selector: 'attribute-host',
   imports: [MasonryGrid, MasonryGridItem],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <masonry-grid columns="4" gutter="24"><div masonryGridItem>a</div></masonry-grid>
-  `,
+  template: ` <masonry-grid columns="4" gutter="24"><div masonryGridItem>a</div></masonry-grid> `,
 })
 class AttributeHost {}
 
@@ -151,7 +149,9 @@ describe('shorthand inputs', () => {
 
   it('layers over application-wide defaults', () => {
     TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ providers: [provideNgMasonryGrid({ gutter: 40, columns: 2 })] });
+    TestBed.configureTestingModule({
+      providers: [provideNgMasonryGrid({ gutter: 40, columns: 2 })],
+    });
 
     const fixture = TestBed.createComponent(ShorthandHost);
     fixture.componentInstance.columns.set(5);

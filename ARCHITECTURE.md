@@ -3,9 +3,11 @@
 How `masonry-angular` works internally: the module graph, the anatomy of a layout pass, the
 invalidation model, and the invariants that keep the hot path allocation-free.
 
-This document is about the _implementation_. For the public API and options, see
-[the library README](projects/masonry-angular/README.md); for workspace commands, see
-[the root README](README.md).
+This document is about the _implementation_ — why it is shaped the way it is. For the public API and
+options, see [the library README](projects/masonry-angular/README.md); for workspace commands, see
+[the root README](README.md); and for how to set the repository up and make a change in it, see
+[CONTRIBUTING.md](CONTRIBUTING.md), which covers the same machinery as instructions rather than as
+reasoning.
 
 ---
 
@@ -13,7 +15,7 @@ This document is about the _implementation_. For the public API and options, see
 
 - [The one-sentence version](#the-one-sentence-version)
 - [Module graph](#module-graph)
-- [The five collaborators](#the-five-collaborators)
+- [The collaborators](#the-collaborators)
 - [Invalidation: everything funnels into one frame](#invalidation-everything-funnels-into-one-frame)
 - [Anatomy of a layout pass](#anatomy-of-a-layout-pass)
 - [Bootstrap: why the first layout takes two passes](#bootstrap-why-the-first-layout-takes-two-passes)
@@ -58,27 +60,40 @@ nothing at all.
 
 ```mermaid
 flowchart TD
-    MG["masonry-grid.ts<br/><small>&lt;masonry-grid&gt; component</small>"]
+    MG["masonry-grid.ts<br/><small>&lt;masonry-grid&gt; — wiring only</small>"]
     ITEM["directives/masonry-grid-item.ts"]
     STAMP["directives/masonry-grid-stamp.ts"]
     SIZER["directives/masonry-grid-sizer.ts"]
     HOST["core/host.ts<br/><small>MasonryGridHost (abstract)</small>"]
+
+    REG["core/item-registry.ts<br/><small>ItemRegistry</small>"]
+    SIZES["core/size-watcher.ts<br/><small>SizeWatcher</small>"]
+    STYLES["core/item-styles.ts<br/><small>ItemStyles</small>"]
+    MOTION["core/motion.ts<br/><small>Motion</small>"]
+    SCHED["core/scheduler.ts<br/><small>FrameScheduler</small>"]
+    OPTS["core/grid-options.ts<br/><small>GridOptionsResolver</small>"]
+
     ENGINE["core/layout-engine.ts<br/><small>pure solver</small>"]
     RESOLVER["core/column-resolver.ts<br/><small>width → geometry</small>"]
+    SIG["core/layout-signature.ts<br/><small>layoutSignature()</small>"]
     NATIVE["core/native.ts<br/><small>feature detection + CSS tracks</small>"]
-    SCHED["core/scheduler.ts<br/><small>FrameScheduler</small>"]
+    NGRID["core/native-grid.ts<br/><small>native column count</small>"]
+
     DEF["schemas/defaults.ts<br/><small>frozen option defaults</small>"]
     PARSE["schemas/parse.ts<br/><small>merge / validate / resolve</small>"]
     PROV["providers.ts<br/><small>provideNgMasonryGrid()</small>"]
     MODELS["models/<br/><small>every data shape — types only</small>"]
 
-    MG --> HOST & ENGINE & RESOLVER & NATIVE & SCHED & PARSE & PROV
+    MG --> HOST & REG & SIZES & STYLES & MOTION & SCHED & OPTS
+    MG --> ENGINE & RESOLVER & SIG & NATIVE & NGRID & PROV
     ITEM --> HOST
     STAMP --> HOST
     SIZER --> HOST
+    OPTS --> PARSE
+    NGRID --> RESOLVER & NATIVE
     PARSE --> DEF
     DEF -.-> MODELS
-    MG & ITEM & HOST & ENGINE & RESOLVER & NATIVE & PARSE -.->|type-only| MODELS
+    MG & ITEM & HOST & REG & SIZES & STYLES & MOTION & OPTS & ENGINE & RESOLVER & SIG & NATIVE & NGRID & PARSE -.->|type-only| MODELS
     PROV --> PARSE
     MG -.->|provides itself as| HOST
 
@@ -91,6 +106,13 @@ Dotted edges are **type-only**. Everything in `models/` is a declaration — no 
 constants — so those imports are erased at compile time and the folder contributes nothing to the
 bundle. Runtime values stay next to the behaviour that owns them: the solver in `core/`, the
 defaults in `schemas/defaults.ts`, the DI token in `core/host.ts`.
+
+The fan-out from `masonry-grid.ts` looks alarming and is the point: the component imports a lot
+because it does very little. It constructs the collaborators, hands them to Angular, and sequences
+them in `runLayout()`. None of them imports it back. Where a collaborator needs something from the
+grid it declares a minimal contract of its own — `SizeWatcherHost` in `core/size-watcher.ts` is
+three methods, and `Motion` takes a single `onExitSettled` callback — so each file can be read, and
+tested, without Angular anywhere in scope.
 
 Three edges carry most of the design weight:
 
@@ -112,25 +134,49 @@ framework's renderer.
 
 ---
 
-## The five collaborators
+## The collaborators
 
-| Piece                    | File                      | Responsibility                                       | Knows about             |
-| ------------------------ | ------------------------- | ---------------------------------------------------- | ----------------------- |
-| `MasonryGrid`            | `masonry-grid.ts`         | Owns the DOM, the observers, the pass, and all state | Everything              |
-| `FrameScheduler`         | `core/scheduler.ts`       | Collapses N invalidations into 1 callback per frame  | `requestAnimationFrame` |
-| `resolveColumnGeometry`  | `core/column-resolver.ts` | `(width, options) → { columns, columnWidth }`        | Options only            |
-| `MasonryLayoutEngine`    | `core/layout-engine.ts`   | `(measured boxes) → coordinates`                     | Nothing                 |
-| `supportsNativeMasonry`… | `core/native.ts`          | `(options) → CSS tracks`, and one feature check      | `CSS.supports`, options |
+`MasonryGrid` is the only Angular-aware object in the library, and the only one that knows a pass
+exists. Everything a pass actually *does* belongs to one of the objects below, each of which owns a
+single kind of state and is deliberately ignorant of the rest.
 
-The component is deliberately the only stateful, DOM-touching, Angular-aware object. The other
-four are pure or near-pure and can be reasoned about — and tested — in isolation.
+| Piece                 | File                    | Owns                                                                         | Deliberately does not know                                                                       |
+| --------------------- | ----------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `MasonryGrid`         | `masonry-grid.ts`       | The inputs, the outputs, the signals, the pass number, and the pass ordering  | How anything below is implemented — it sequences, it does not compute                             |
+| `ItemRegistry`        | `core/item-registry.ts` | Which items, stamps and sizer exist; their records; the per-pass buffers      | Options, geometry, styles. It reports membership and order, never what to do about them           |
+| `SizeWatcher`         | `core/size-watcher.ts`  | The one `ResizeObserver`, the viewport listener, and three measured widths    | Which element is an item versus a stamp — anything that is not the width source or the sizer is an item |
+| `ItemStyles`          | `core/item-styles.ts`   | Every inline style the grid writes onto an item, and the `last*` write guards | Order, measurement, and the solver. It is handed a record and a number                            |
+| `Motion`              | `core/motion.ts`        | Entry effects, the deferred transition frame, and the live exit clones        | Layout. It never moves an item; it decorates moves the pass already made                          |
+| `FrameScheduler`      | `core/scheduler.ts`     | One pending frame and one pending debounce timer                              | What the callback does, or why it was scheduled                                                   |
+| `MasonryLayoutEngine` | `core/layout-engine.ts` | Its reusable `Float64Array` buffers, for the duration of a solve              | Everything. No Angular, no DOM, no options object — numbers in, numbers out                       |
+| `GridOptionsResolver` | `core/grid-options.ts`  | The last merged input and the last resolved result, for identity caching      | Where the three sources came from, and what any option means                                      |
 
-`core/native.ts` is the smallest of them and holds a single piece of mutable state: the memoised
-answer to `CSS.supports('display', 'grid-lanes')`, computed at most once per document and only if
-something asks. Everything else in the file — `nativeTemplateColumns`, `nativeColumnsAreStatic`,
-`nativeUnsupportedOptions` — is a pure function of the resolved options. Keeping the detection in one
-place is also what keeps the SSR guard in one place: there is exactly one expression in the library
-that can wrongly claim native support on a server.
+Four pure helpers round it out, with no state at all beyond one cache each:
+
+| Helper                                        | File                      | Shape                                                            |
+| --------------------------------------------- | ------------------------- | ---------------------------------------------------------------- |
+| `resolveColumnGeometry`, `resolveFallbackColumns` | `core/column-resolver.ts` | `(width, basis, options, sizerWidth?) → { columns, columnWidth }` |
+| `layoutSignature`                             | `core/layout-signature.ts` | Every solver input → one 32-bit integer                          |
+| `supportsNativeMasonry`, `nativeTemplateColumns`, … | `core/native.ts`    | Options → CSS tracks, plus one memoised feature check            |
+| `resolveNativeColumns`, `countNativeColumns`  | `core/native-grid.ts`     | What the browser resolved a native grid's column count to        |
+
+Two of those hold their one piece of state for a reason worth stating. `core/column-resolver.ts`
+caches resolved breakpoint stops in a `WeakMap` keyed by the map object's identity, so a
+`{ sm: 1, lg: 3 }` literal costs one parse and sort for its lifetime rather than one per pass.
+`core/native.ts` memoises the answer to `CSS.supports('display', 'grid-lanes')`, computed at most
+once per document and only if something asks; keeping the detection in one place is also what keeps
+the SSR guard in one place, since there is exactly one expression in the library that could wrongly
+claim native support on a server.
+
+The split is not cosmetic. Because `ItemStyles` is handed a record and two numbers, it can be tested
+without a grid; because `SizeWatcher` talks to a three-method `SizeWatcherHost` rather than to the
+component, it can be tested without Angular; and because `ItemRegistry` knows nothing about
+geometry, its DOM-ordering logic — the part everything else depends on being right — is a handful of
+assertions over a plain container element.
+
+The corresponding limitation: no single file describes a pass any more. `runLayout()` in
+`masonry-grid.ts` is the only place the whole sequence is visible, which is why its header comment
+lists the eight steps and names the file that performs each one.
 
 ---
 
@@ -160,25 +206,28 @@ flowchart LR
 1. **Coalesce.** `schedule()` is idempotent within a frame — `if (this.frame !== 0) return`. A burst
    of a hundred appended items costs one layout pass, not a hundred.
 2. **Debounce, selectively.** `schedule(debounceMs)` restarts a `setTimeout` and only then requests
-   the frame. The grid passes `options.resizeDebounce` **only for container resizes**; item
-   measurements always pass `0`:
+   the frame. `SizeWatcher` reports whether a batch of entries changed the *geometry* — the width
+   source or the sizer — and only that case is debounced; item measurements always pass `0`:
 
    ```ts
-   // onResize()
-   this.scheduler.schedule(containerChanged ? this.options().resizeDebounce : 0);
+   // masonry-grid.ts, the SizeWatcherHost.onChange implementation
+   private onSizeChange(geometryChanged: boolean): void {
+     this.scheduler.schedule(geometryChanged ? this.options().resizeDebounce : 0);
+   }
    ```
 
    A debounced item measurement would make newly added content visibly lag; a debounced container
-   resize just avoids re-solving mid-drag.
+   resize just avoids re-solving mid-drag. Note where the decision lives: the watcher classifies the
+   entry, the component owns the policy, and the scheduler knows neither.
 
 3. **Stay cancellable.** `cancel()` clears both the frame and the timer, `destroy()` latches so a
    late callback after teardown is a no-op.
 
 ### The one observer
 
-There is a single `ResizeObserver` for the container, every item, every stamp, and the sizer — not
-one per element. A single observer with many targets is markedly cheaper, and its entries carry
-sizes the browser has already computed, so reading them **forces no reflow**:
+`SizeWatcher` owns a single `ResizeObserver` for the container, every item, every stamp, and the
+sizer — not one per element. A single observer with many targets is markedly cheaper, and its
+entries carry sizes the browser has already computed, so reading them **forces no reflow**:
 
 ```ts
 function contentWidthOf(entry: ResizeObserverEntry): number {
@@ -186,6 +235,11 @@ function contentWidthOf(entry: ResizeObserverEntry): number {
   return box ? box.inlineSize : entry.contentRect.width;
 }
 ```
+
+Demultiplexing is by identity, and by elimination: `onResize()` compares each entry's target against
+the width source and against the sizer, and anything that is neither is an item. That is the whole
+reason `SizeWatcher` never needs the registry — it does not have to know what an item *is*, only
+what the other two are.
 
 Box modes are chosen per role:
 
@@ -199,11 +253,12 @@ Box modes are chosen per role:
 ### The `fitWidth` feedback loop, and how it is broken
 
 `fitWidth` shrinks the host to the width the columns actually occupy. Observing the host would then
-feed the grid's own write back in as the next pass's input — an oscillation. `syncWidthSource()`
-observes the **parent** instead whenever `fitWidth` is on, so the loop cannot form:
+feed the grid's own write back in as the next pass's input — an oscillation.
+`SizeWatcher.syncWidthSource()` observes the **parent** instead whenever `fitWidth` is on, so the
+loop cannot form:
 
 ```ts
-const desired = (options.fitWidth ? this.element.parentElement : this.element) ?? this.element;
+const wanted = (options.fitWidth ? this.element.parentElement : this.element) ?? this.element;
 ```
 
 It is re-evaluated at the top of every pass, so toggling `fitWidth` at runtime re-points the
@@ -213,25 +268,39 @@ observer.
 
 ## Anatomy of a layout pass
 
-`runLayout()` is the heart of the library. The strict ordering below is the reason a pass costs at
-most one forced reflow.
+`runLayout()` is the heart of the library. It is also, since the split, almost entirely delegation:
+forty lines that call eight collaborators in one fixed order. The strict ordering is the reason a
+pass costs at most one forced reflow.
+
+| Step | What happens                            | Who does it                                    | File                       |
+| ---- | --------------------------------------- | ---------------------------------------------- | -------------------------- |
+| 1    | Which items, in page order              | `ItemRegistry.collectOrdered()`                | `core/item-registry.ts`    |
+| 2    | Container / viewport / sizer / heights   | `SizeWatcher` (already in memory) + `stampBoxes()` | `core/size-watcher.ts`, `core/item-registry.ts` |
+| 3    | Width → column count and column width   | `resolveColumnGeometry()`                      | `core/column-resolver.ts`  |
+| 4    | Give every item its width               | `ItemStyles.writeWidths()`                     | `core/item-styles.ts`      |
+| 5    | Would this pass change anything?        | `layoutSignature()`                            | `core/layout-signature.ts` |
+| 6    | Heights and spans → coordinates         | `MasonryLayoutEngine.solve()`                  | `core/layout-engine.ts`    |
+| 7    | Write the coordinates as transforms     | `ItemStyles.writePosition()` / `promote()`     | `core/item-styles.ts`      |
+| 8    | Entry effects, movement transitions     | `Motion.playEntry()` / `enableTransitions()`   | `core/motion.ts`           |
+
+Steps 1–3 only read from the DOM; steps 4–8 only write to it.
 
 ```mermaid
 flowchart TD
     START([runLayout]) --> GATE{"initialized?<br/>not blocked?"}
     GATE -->|no| STOP1([return])
-    GATE -->|yes| SYNC["syncWidthSource()"]
+    GATE -->|yes| SYNC["sizes.syncWidthSource()<br/><small>SizeWatcher</small>"]
 
-    SYNC --> READ["<b>READ PHASE</b><br/>collectOrdered() — walk child list<br/>collectStampBoxes() — offset* reads"]
+    SYNC --> READ["<b>READ PHASE</b><br/>registry.collectOrdered() — walk child list<br/>registry.stampBoxes() — offset* reads"]
     READ --> DEV["dev-only warnings<br/><small>sizer vs columns, bottom origin vs stamps</small>"]
-    DEV --> GEO["resolveColumnGeometry()"]
+    DEV --> GEO["resolveColumnGeometry()<br/><small>column-resolver.ts</small>"]
 
-    GEO --> WW["<b>writeWidths()</b><br/><small>always first — unblocks measurement</small>"]
+    GEO --> WW["<b>styles.writeWidths()</b><br/><small>always first — unblocks measurement</small>"]
     WW --> EMPTY{"items registered<br/>but none measured?"}
     EMPTY -->|yes| STOP2(["return — stay on fallback"])
-    EMPTY -->|no| FILL["fillMeasured() — refresh slots in place"]
+    EMPTY -->|no| FILL["registry.measuredSlots()<br/><small>refresh slots in place</small>"]
 
-    FILL --> SIG["computeSignature()"]
+    FILL --> SIG["layoutSignature()<br/><small>layout-signature.ts</small>"]
     SIG --> SAME{"signature unchanged?"}
     SAME -->|yes| STOP3(["return — nothing can have moved"])
     SAME -->|no| SOLVE["engine.solve()"]
@@ -239,11 +308,11 @@ flowchart TD
     SOLVE --> FB{"first pass?"}
     FB -->|yes| RMCLASS["classList.remove('masonry-grid--fallback')"]
     FB -->|no| WRITE
-    RMCLASS --> WRITE["<b>WRITE PHASE</b><br/>per item: transform if moved<br/>promote() if unplaced"]
+    RMCLASS --> WRITE["<b>WRITE PHASE</b><br/>styles.writePosition() if moved<br/>styles.promote() if unplaced"]
     WRITE --> HOSTW["host height / width / CSS vars"]
     HOSTW --> FINISH["finishPass()"]
 
-    FINISH --> ANIM["animateEntry() + enableTransitionsNextFrame()"]
+    FINISH --> ANIM["motion.playEntry()<br/>+ motion.enableTransitions()"]
     ANIM --> SIGNALS["state.set({ columns, columnWidth,<br/>contentHeight, itemCount, pass })<br/>ready.set(true)"]
     SIGNALS --> OUT["zone.run → layoutComplete.emit()"]
     OUT --> DONE([done])
@@ -256,21 +325,33 @@ flowchart TD
 
 ### Read phase
 
-Only two things are read from the DOM, and neither is per-item geometry:
+Only two things are read from the DOM, and neither is per-item geometry. Both belong to
+`ItemRegistry`:
 
-- **`collectOrdered()`** walks `this.element.children` and looks each child up in the `records` map.
-  Order therefore comes from the **DOM**, not from registration order — which is why insertions,
-  removals and `@for` reorderings keep items in source order without any `reloadItems()` call.
-  Ignored items are demoted here; unmeasured or still-decoding items sit the pass out.
-- **`collectStampBoxes()`** reads `offsetLeft/Top/Width/Height`, but only when stamps exist. A grid
-  without stamps reads nothing at all in this phase.
+- **`collectOrdered(onIgnored)`** walks `container.children` and looks each child up in the records
+  map. Order therefore comes from the **DOM**, not from registration order — which is why
+  insertions, removals and `@for` reorderings keep items in source order without any
+  `reloadItems()` call. Ignored items are reported through the `onIgnored` callback, which the
+  component wires to `ItemStyles.demote()`; unmeasured or still-decoding items sit the pass out.
+  Note the shape of that callback: the registry decides *that* an item has opted out, and
+  `ItemStyles` decides what opting out looks like in CSS.
+- **`stampBoxes()`** reads `offsetLeft/Top/Width/Height`, but only when stamps exist. A grid without
+  stamps reads nothing at all in this phase. This is the one place geometry is read straight from
+  the DOM rather than from an observer, because a stamp's *position* matters and no observer reports
+  position.
 
-Item heights and the container width never appear here: they arrived asynchronously through the
-`ResizeObserver` and are already in memory.
+Item heights and the container width never appear here: they arrived asynchronously through
+`SizeWatcher`'s `ResizeObserver` and are already in memory.
+
+`measuredSlots(ordered)` sits on the boundary between the phases. It is not a DOM read — it copies
+each record's height and span into reused `MeasuredSlot` objects, the shape the solver wants — but
+it runs after `writeWidths()` because the early return above it must not be taken until widths are
+out.
 
 ### Write phase, and why `writeWidths()` comes first
 
-`writeWidths()` runs **before** the "nothing is measured yet" early return. That ordering is
+`ItemStyles.writeWidths()` runs **before** the "nothing is measured yet" early return. That ordering
+is
 load-bearing: an item cannot report its real height until it has been given its column width, so
 this write is what unblocks the measurement the _next_ pass consumes.
 
@@ -287,12 +368,17 @@ if (record.lastWidth !== width) {
 respanned:
 
 ```ts
+// ItemStyles.writeWidths()
 const geometryUnchanged =
-  columns === this.widthsColumns &&
-  columnWidth === this.widthsColumnWidth &&
-  options.gutterX === this.widthsGutterX;
-if (geometryUnchanged && !this.widthsDirty && !options.contentVisibility) return;
+  columns === this.lastColumns &&
+  columnWidth === this.lastColumnWidth &&
+  options.gutterX === this.lastGutterX;
+if (geometryUnchanged && !this.dirty && !options.contentVisibility) return;
 ```
+
+`dirty` is set by `ItemStyles.invalidate()`, which the component calls when an item is added,
+removed, re-spanned or ignored — the events that change what needs writing without changing the
+geometry.
 
 `contentVisibility` is the deliberate exception: `contain-intrinsic-size` encodes the _measured
 height_, which changes far more often than the width does. A stale value makes the browser
@@ -319,41 +405,45 @@ sequenceDiagram
     autonumber
     participant Item as MasonryGridItem
     participant Grid as MasonryGrid
-    participant RO as ResizeObserver
+    participant Reg as ItemRegistry
+    participant SW as SizeWatcher
+    participant Sty as ItemStyles
     participant Eng as LayoutEngine
 
     Note over Item: constructor → applyInitialStyles()<br/>(runs on server too)
     Item->>Grid: afterNextRender → addItem()
-    Grid->>RO: observe(element, border-box)
+    Grid->>Reg: addItem(handle) → new record
+    Grid->>SW: watchItem(element) — border-box
     Grid->>Grid: requestLayout()
 
     Note over Grid: afterNextRender → initialize()
-    Grid->>RO: observe width source (content-box)
+    Grid->>SW: start() + syncWidthSource() — content-box
 
     rect rgb(230, 240, 255)
     Note over Grid,Eng: Pass 1 — measurement enabling
-    Grid->>Grid: collectOrdered() → 0 measured items
-    Grid->>Item: writeWidths() — style.width = columnWidth
+    Grid->>Reg: collectOrdered() → 0 measured items
+    Grid->>Sty: writeWidths() — style.width = columnWidth
     Grid-->>Grid: return early (stay on CSS fallback)
     end
 
-    RO-->>Grid: entries: item heights at that width
-    Grid->>Grid: record.height = ..., measured = true
-    Grid->>Grid: scheduler.schedule(0)
+    SW-->>Grid: setItemHeight(el, h) per observer entry
+    Grid->>Reg: record.height = h, measured = true
+    SW-->>Grid: onChange(false) → scheduler.schedule(0)
 
     rect rgb(230, 255, 235)
     Note over Grid,Eng: Pass 2 — real layout
+    Grid->>Reg: measuredSlots(ordered)
     Grid->>Eng: solve({ items, stamps, geometry })
     Eng-->>Grid: positions, contentHeight, contentWidth
-    Grid->>Item: transform + promote() → position: absolute
+    Grid->>Sty: writePosition() + promote() → position: absolute
     Grid->>Grid: remove .masonry-grid--fallback
     Grid->>Grid: ready.set(true) → layoutComplete
     end
 ```
 
-The early return in pass 1 — `if (records.size > 0 && ordered.length === 0) return` — is what
-prevents a visible flash of an empty grid: the multi-column fallback keeps painting until there is
-something real to show.
+The early return in pass 1 — `if (this.registry.itemCount > 0 && ordered.length === 0) return` — is
+what prevents a visible flash of an empty grid: the multi-column fallback keeps painting until there
+is something real to show.
 
 ---
 
@@ -489,13 +579,29 @@ relayout of an unchanged grid allocate nothing.
 
 ## The signature: skipping work that would change nothing
 
-`computeSignature()` folds every input to `solve()` into one 32-bit integer using the classic
-`hash * 31 + x` accumulation, with floats rounded to 1/100 px (`HASH_PRECISION = 100`).
+`layoutSignature()`, in [`core/layout-signature.ts`](projects/masonry-angular/src/lib/core/layout-signature.ts),
+folds every input to `solve()` into one 32-bit integer using the classic `hash * 31 + x`
+accumulation, with floats rounded to 1/100 px (`PRECISION = 100`) so sub-pixel jitter in a
+measurement does not read as a real change.
 
 ```ts
+const signature = layoutSignature(
+  geometry,
+  options,
+  measured,
+  stamps,
+  this.sizes.containerWidth,
+  this.sizes.sizerWidth,
+);
 if (signature === this.signature) return; // identical inputs ⇒ identical output
 this.signature = signature;
 ```
+
+**Six positional arguments rather than one options object, deliberately.** This function runs on the
+hot path — on every frame of a window drag, including every frame it is about to *skip* — so an
+object literal at the call site would allocate on each one. That would be an allocation to decide
+not to allocate anything, which is precisely the cost the signature exists to avoid. Six parameters
+is the price of keeping a skipped pass genuinely free.
 
 What goes in: column count, column width, **container width**, sizer width, both gutters,
 `horizontalOrder`, `direction`, `verticalOrigin`, item count, every item's height and span, and
@@ -505,12 +611,19 @@ The container width looks redundant next to the geometry, and is not: in an RTL 
 to the right edge, so with a fixed `columnWidth` the container can resize — moving every item —
 while the column count and column width stay exactly the same.
 
-Two conventions:
+Three conventions:
 
-- `0` is reserved as a **force sentinel**. `layout()` and the options `effect` set
-  `this.signature = 0`, and the hash never returns 0 (`return hash === 0 ? 1 : hash`), so a forced
-  pass can never be mistaken for an unchanged one.
+- `FORCE_NEXT_LAYOUT` (the value `0`) is a **force sentinel**. `layout()`, the options `effect` and
+  a sizer change set `this.signature = FORCE_NEXT_LAYOUT`, and the hash never returns 0
+  (`return hash === 0 ? 1 : hash`), so a forced pass can never be mistaken for an unchanged one.
 - The check sits _after_ `writeWidths()`, so a skipped pass still keeps item widths correct.
+- It is a hash, so two different layouts could in principle collide. The inputs are a handful of
+  rounded measurements and the cost of a collision is one stale frame rather than corruption — the
+  next real change produces a different number and repairs it.
+
+Because the hash is the gate on the whole write phase, **any new input to `solve()` has to be folded
+in here too.** The failure mode is silence: the grid looks right whenever something else also
+changed, and stale the rest of the time. `layout-signature.spec.ts` is where that guard is written.
 
 This is what makes a resize drag cheap: the observer fires on every frame, but only the frames where
 the geometry actually crosses a threshold do any solving or DOM writing.
@@ -519,8 +632,9 @@ the geometry actually crosses a threshold do any solving or DOM writing.
 
 ## Item lifecycle
 
-An item is a `MasonryGridItem` directive plus an `ItemRecord` the grid owns. The record carries the
-last values written to the DOM, so an unchanged pass writes nothing.
+An item is a `MasonryGridItem` directive plus an `ItemRecord` held by `ItemRegistry`. The record
+carries the last values written to the DOM, so an unchanged pass writes nothing. The registry owns
+the record; `ItemStyles` is the only thing that writes to the element it points at.
 
 ```mermaid
 stateDiagram-v2
@@ -537,7 +651,7 @@ stateDiagram-v2
     Placed --> Ignored: [masonryIgnore]=true<br/>demote() → back to flow
     Ignored --> Measured: [masonryIgnore]=false
 
-    Placed --> Leaving: directive destroyed<br/>animateExit() clones
+    Placed --> Leaving: directive destroyed<br/>Motion.playExit() clones
     Measured --> [*]: removed before placement
     Leaving --> [*]: animation finish/cancel<br/>clone removed
 ```
@@ -561,13 +675,21 @@ pending.push(image.decode().catch(() => settled(image)));
 The pending count is also released in `onDestroy`, because an item torn down mid-decode would
 otherwise hold `itemsLoaded` back permanently.
 
-**Ignoring is reversible.** `demote()` is the exact inverse of `promote()`: it clears position,
-margin, width, transform, transition and the `contain-intrinsic-size` bookkeeping, and resets
-`lastWidth`/`lastX`/`lastY` to sentinels so the next placement writes everything fresh.
+**Ignoring is reversible.** `ItemStyles.demote()` is the exact inverse of `promote()`: it clears
+position, margin, width, transform, transition and the `contain-intrinsic-size` bookkeeping, and
+resets `lastWidth`/`lastX`/`lastY` to sentinels so the next placement writes everything fresh. The
+two live next to each other in `core/item-styles.ts` for exactly that reason — a property added to
+one and forgotten in the other is a bug you can see, and only if you are looking at both.
 
 ---
 
 ## Motion model
+
+All three effects live in [`core/motion.ts`](projects/masonry-angular/src/lib/core/motion.ts). The
+`Motion` object is handed the container element and a single `onExitSettled` callback, and that is
+the entire extent of what it knows about the grid — it never positions anything, it decorates moves
+the pass has already made. Everything in it degrades quietly: no Web Animations API, a `0` duration,
+or a `false` config, and the effect simply does not play while the layout is unaffected.
 
 Three independent mechanisms, each with a different job:
 
@@ -580,12 +702,13 @@ Three independent mechanisms, each with a different job:
 ### Why exits animate a clone
 
 Angular detaches an element as soon as its directive is destroyed, so by the time `removeItem()`
-runs there is nothing left on screen to animate. The grid clones the node — the clone inherits the
-inline position, width and transform the grid wrote, which is exactly what makes it land where the
-item was — appends it to the host, animates that, and discards it on `finish` or `cancel`:
+runs there is nothing left on screen to animate. `Motion.playExit()` clones the node — the clone
+inherits the inline position, width and transform `ItemStyles` wrote, which is exactly what makes it
+land where the item was — appends it to the host, animates that, and discards it on `finish` or
+`cancel`:
 
 ```ts
-const clone = source.cloneNode(true) as HTMLElement;
+const clone = record.handle.element.cloneNode(true) as HTMLElement;
 clone.classList.add('masonry-item--leaving');
 clone.setAttribute('aria-hidden', 'true');
 clone.style.pointerEvents = 'none'; // scenery: no pointer input
@@ -593,18 +716,21 @@ clone.style.transition = ''; // must not inherit the position transition
 ```
 
 Consequences worth knowing: the clone is inert (no component state, no event handlers), it is hidden
-from assistive technology, and it is removed on teardown before any `finish` event can fire — which
-is why `destroyed` is latched _first_ in the `onDestroy` handler, so a cancelled animation cannot
-emit on the way out.
+from assistive technology, and it is removed on teardown before any `finish` event can fire. Two
+flags cooperate to keep that quiet — the component latches its own `destroyed` _first_ in the
+`onDestroy` handler, before calling `motion.destroy()`, and `Motion` latches its own before
+cancelling the clones it holds — so an animation cancelled on the way out cannot emit
+`removeComplete` at a grid that no longer exists.
 
 ### Why the transition is enabled one frame late
 
 An item placed with `transition: transform` already active would slide in from the origin. So
-`promote()` positions it, and only on the **next** frame does `enableTransitionsNextFrame()` set the
-transition property:
+`ItemStyles.promote()` positions it, and only on the **next** frame does `Motion.enableTransitions()`
+set the transition property:
 
 ```ts
 this.transitionFrame = requestAnimationFrame(() => {
+  this.transitionFrame = 0;
   const value = `transform ${duration}ms ${easing}`;
   for (const record of this.transitionQueue) {
     if (record.transitioned) continue;
@@ -624,16 +750,21 @@ Removals reach the same counter by two routes, and the event fires once per batc
 
 ```mermaid
 flowchart LR
-    RM["removeItem()"] --> Q{"placed &&<br/>exit animation<br/>started?"}
+    RM["removeItem()"] --> Q{"record.placed &&<br/>motion.playExit()<br/>returned true?"}
     Q -->|no| C["removedSinceEmit++"]
-    Q -->|yes| L["leaving.set(animation, clone)"]
-    L --> FIN["finish / cancel"] --> C2["removedSinceEmit++"]
-    C2 --> E1{"leaving.size === 0?"}
+    Q -->|yes| L["motion: leavingClones.set(animation, clone)"]
+    L --> FIN["finish / cancel"] --> C2["onExitSettled()<br/>→ removedSinceEmit++"]
+    C2 --> E1{"motion.hasLeavingItems<br/>=== false?"}
     C --> P["next finishPass()"]
-    P --> E2{"leaving.size === 0?"}
+    P --> E2{"motion.hasLeavingItems<br/>=== false?"}
     E1 -->|yes| EMIT["removeComplete.emit({ removed })"]
     E2 -->|yes| EMIT
 ```
+
+The division of labour is worth noticing: `Motion` knows when a clone has settled and nothing about
+counting; the component keeps `removedSinceEmit` and decides when a batch is complete. `playExit()`
+returning `false` — no animation configured, no Web Animations API, or the grid already torn down —
+is what routes an un-animated removal down the left-hand branch.
 
 Un-animated removals are reported from `finishPass()` rather than immediately — the event then means
 "the gap has actually closed", not merely "the directive was destroyed".
@@ -647,15 +778,40 @@ plus the raw `[options]` object — and exactly one thing reads them: the `optio
 Everything else in the component, and every directive through `MasonryGridHost`, reads `options()`
 and never an input.
 
+The computed itself is two lines. All of the work is in `GridOptionsResolver`
+([`core/grid-options.ts`](projects/masonry-angular/src/lib/core/grid-options.ts)), which is
+constructed with the application defaults and then answers one question — *given this `[options]`
+value and these shorthands, what is in effect?* — over and over:
+
+```ts
+private readonly optionsResolver = new GridOptionsResolver(inject(NG_MASONRY_GRID_DEFAULTS));
+
+readonly options: Signal<ResolvedMasonryGridOptions> = computed(() =>
+  this.optionsResolver.resolve(this.optionsInput(), {
+    columns: this.columns(),
+    columnWidth: this.columnWidth(),
+    gutter: this.gutter(),
+    gutterX: this.gutterX(),
+    gutterY: this.gutterY(),
+  }),
+);
+```
+
+The resolver is a plain class with no Angular in it: DI supplies the defaults, the component supplies
+the two changing sources, and the object holds only the small amount of state the identity cache
+needs. It is testable with two calls and an `expect(a).toBe(b)`.
+
 ```mermaid
 flowchart TD
     SH["columns / columnWidth / gutter<br/>gutterX / gutterY<br/><small>transform: coerceShorthand</small>"] --> CMP
     C["[options] input<br/><small>public only as optionsInput()</small>"] --> CMP
     G["provideNgMasonryGrid(defaults)<br/><small>validated eagerly at bootstrap</small>"] --> CMP
 
-    CMP["computed(): mergeMasonryGridOptions(<br/>globalDefaults, optionsInput(), shorthand)<br/><small>merges unparsed input, lowest precedence first</small>"] --> ID{"masonryOptionsEqual<br/>to the last merged value?"}
+    CMP["options() computed<br/>→ GridOptionsResolver.resolve()"] --> MRG["mergeMasonryGridOptions(<br/>applicationDefaults, optionsInput, shorthands)<br/><small>unparsed input, lowest precedence first</small>"]
+    MRG --> ID{"masonryOptionsEqual<br/>to the last merged value?"}
     ID -->|yes| REUSE(["return the identical<br/>previous resolved object"])
-    ID -->|no| V{"ngDevMode?"}
+    ID -->|no| PARSE["parseMasonryGridOptions()<br/><small>schemas/parse.ts</small>"]
+    PARSE --> V{"ngDevMode?"}
     V -->|yes| VAL["validate() → throw<br/>MasonryGridOptionsError with paths"]
     V -->|no| R
     VAL --> R["resolve() — fill from<br/>DEFAULT_MASONRY_GRID_OPTIONS"]
@@ -665,8 +821,15 @@ flowchart TD
     style VAL fill:#c92a2a,color:#fff
 ```
 
-**The shorthands are ordinary inputs with a coercion transform.** `coerceShorthand` turns the string
-an HTML attribute produces into a number, which is what lets `columns="3"` work with no binding and
+The split between the two files is by what changes. `core/grid-options.ts` owns *precedence and
+memoisation* — which source wins, and whether anything actually changed since last time.
+`schemas/parse.ts` owns *the option vocabulary* — what fields exist, what they may contain, and what
+they default to. Adding an option touches the second; changing how the sources layer touches the
+first.
+
+**The shorthands are ordinary inputs with a coercion transform.** `coerceShorthand` (exported from
+`core/grid-options.ts` alongside the resolver, since it is the other half of the same job) turns the
+string an HTML attribute produces into a number, which is what lets `columns="3"` work with no binding and
 no object literal, while `[columns]="{ 0: 1, 768: 3 }"` passes through untouched. A string that is
 _not_ a number is deliberately passed through as well rather than coerced to `NaN`: the dev-mode
 validator downstream then reports it with a precise path, which is far more useful than a silently
@@ -682,11 +845,10 @@ provided `fallback`. `mergeMasonryGridOptions` also clears the counterpart when 
 exclusive `columns` / `columnWidth` pair is set at any layer, so a `columnWidth="260"` attribute
 retires an inherited `columns` map instead of tripping the exclusivity check against it.
 
-**Identity caching is still what makes inline literals free — it has just moved.** It used to sit in
-an input transform on `options`; now it sits inside the computed, because the value being cached is
-no longer a single input's. `[options]="{ gutter: 16 }"` allocates a fresh object on every change
-detection run, so the merge produces a fresh object too. `resolveOptions()` compares that merged
-object structurally against the last one and, on a match, returns the _identical_ previous
+**Identity caching is what makes inline literals free.** `[options]="{ gutter: 16 }"` allocates a
+fresh object on every change detection run, so the merge produces a fresh object too.
+`GridOptionsResolver.resolve()` compares that merged object structurally against the last one it saw
+(`masonryOptionsEqual`) and, on a match, returns the _identical_ previous
 `ResolvedMasonryGridOptions`. A `computed` compares its new value to its old with `Object.is`, so an
 identical reference means the computed did not change: no dependent `computed` recomputes, the
 options `effect` does not re-run, and no layout pass is queued. The deep compare is the price, and it
@@ -709,9 +871,11 @@ source of truth, tagged `satisfies ResolvedMasonryGridOptions` — the type it f
 
 The grid is `ChangeDetectionStrategy.OnPush` and works identically zoneful or zoneless.
 
-- **All plumbing runs outside Angular.** Observer construction, subscription and the `resize`
-  listener are wrapped in `zone.runOutsideAngular()`. A `ResizeObserver` callback firing on every
-  frame of a drag never schedules change detection.
+- **All plumbing runs outside Angular.** Every call into `SizeWatcher` that constructs the observer,
+  registers the `resize` listener or adds a target is wrapped in `zone.runOutsideAngular()` by the
+  component — `SizeWatcher.start()` says so in a comment because it cannot enforce it itself. A
+  `ResizeObserver` callback firing on every frame of a drag therefore never schedules change
+  detection.
 - **Signals are the notification channel.** `finishPass()` writes `state` — one object carrying
   `columns`, `columnWidth`, `contentHeight`, `itemCount` and `pass` — and then `ready`. Writing a
   signal is what makes a zoneless application re-render, and the host bindings
@@ -815,18 +979,27 @@ Those browsers get the JavaScript engine, which is the correct answer for them.
 observer that watches items, never registers the viewport listener, and never reaches `runLayout()`.
 
 `initializeNative()` does three things and stops: it emits the dev-mode warning for options the
-browser cannot honour, it creates one container observer **only** if the column count is
-breakpoint-driven, and it drops the fallback class. `runNativeLayout()` is what a "pass" means in
-this mode: resolve the column count, publish `state`, set `ready`, emit `layoutComplete`. There is
-no read phase, no signature, no solve, and no write to any item.
+browser cannot honour, it asks `SizeWatcher.watchContainerOnly()` for one container observer
+**only** if the column count is breakpoint-driven, and it drops the fallback class.
+`runNativeLayout()` is what a "pass" means in this mode: `resolveNativeColumns()` for the count,
+publish `state`, set `ready`, emit `layoutComplete`. There is no read phase, no signature, no solve,
+and no write to any item — the registry, `ItemStyles` and `Motion` are never touched.
 
-The column count is resolved three ways, and only one of them costs anything:
+The column count is resolved three ways by `resolveNativeColumns()` in
+[`core/native-grid.ts`](projects/masonry-angular/src/lib/core/native-grid.ts), and only one of them
+costs anything:
 
 | `columns` / `columnWidth` | `grid-template-columns`                   | How the count is known                          |
 | ------------------------- | ----------------------------------------- | ----------------------------------------------- |
-| `columnWidth: 260`        | `repeat(auto-fill, minmax(min(100%, 260px), 1fr))` | Read back from the computed style, for reporting only |
+| `columnWidth: 260`        | `repeat(auto-fill, minmax(min(100%, 260px), 1fr))` | `countNativeColumns()` reads the computed style, for reporting only |
 | `columns: 4`              | `repeat(4, 1fr)`                          | It is the option                                |
 | `columns: { 0: 1, … }`    | `repeat(n, 1fr)`                          | One container `ResizeObserver` → `resolveColumnGeometry` |
+
+`native-grid.ts` exists as a separate file from `native.ts` because the two answer different
+questions. `native.ts` is about the *browser* — what it supports, and what CSS to hand it — and is
+imported by the component's host bindings on every grid. `native-grid.ts` is about a *grid* — which
+of the three routes above applies to this configuration — and is the only one that needs the column
+resolver.
 
 The first two are what `nativeColumnsAreStatic()` recognises: a single declaration that already
 describes the whole responsive behaviour, so the browser re-lays-out on resize, on content changes
@@ -874,11 +1047,11 @@ if every test still passes.
 | ----------------------------------------------- | ---------------------------------------------------------------------------- |
 | At most one layout pass per animation frame     | `FrameScheduler` idempotent `schedule()`                                     |
 | Reads never interleave with writes              | Phase ordering in `runLayout()`                                              |
-| No forced reflow when there are no stamps       | Sizes come from `ResizeObserverEntry`, not `getBoundingClientRect()`         |
-| A no-op pass allocates nothing                  | Reused `Float64Array`s, reused `MeasuredSlot` objects, reused scratch arrays |
-| A no-op pass writes nothing                     | Signature check + per-property `last*` guards                                |
+| No forced reflow when there are no stamps       | Sizes come from `ResizeObserverEntry` via `SizeWatcher`, not `getBoundingClientRect()` |
+| A no-op pass allocates nothing                  | Reused `Float64Array`s in the engine, reused `MeasuredSlot` objects and scratch arrays in `ItemRegistry`, positional arguments to `layoutSignature()` |
+| A no-op pass writes nothing                     | Signature check + per-property `last*` guards in `ItemStyles`                |
 | A resize drag does not re-solve every frame     | Signature check + `resizeDebounce`                                           |
-| One observer, not one per item                  | Single `ResizeObserver` with many targets                                    |
+| One observer, not one per item                  | `SizeWatcher`'s single `ResizeObserver` with many targets                    |
 | Repositioning stays off the layout/paint path   | 2D `transform`, `transition: transform` only                                 |
 | Long grids do not promote every item to a layer | `translate`, not `translate3d`                                               |
 | Breakpoint keys are sorted once per map         | `WeakMap` cache keyed by object identity                                     |
@@ -887,15 +1060,20 @@ if every test still passes.
 | Native layout observes at most the container    | The breakpoint-map branch of `initializeNative()`; no item is ever observed  |
 | Native layout does no per-item work at all      | `nativeActive()` forks before `addItem()` measures, before `runLayout()` solves, and before `awaitImages()` allocates |
 
-The scratch buffers reused across passes — `ordered`, `measured`, `stampBoxes`, `entering` — are
-truncated with `.length = 0` rather than reallocated, and `fillMeasured()` mutates the existing slot
+The scratch buffers reused across passes live with the objects that fill them — `orderedBuffer`,
+`measuredBuffer` and `stampBoxBuffer` in `ItemRegistry`, `entering` in the component. All are
+truncated with `.length = 0` rather than reallocated, and `measuredSlots()` mutates the existing slot
 objects in place:
 
 ```ts
-const slot = (this.measured[i] ??= { height: 0, colSpan: 1 });
+// ItemRegistry.measuredSlots()
+const slot = (slots[i] ??= { height: 0, colSpan: 1 });
 slot.height = record.height;
 slot.colSpan = record.handle.colSpan();
 ```
+
+That the slots are shared and overwritten is why the solver is careful never to retain one, and why
+`layoutSignature()` reads them immediately rather than keeping a copy to compare against next time.
 
 ---
 
@@ -920,9 +1098,18 @@ the deferred transition-enabling frame, for instance. `measure()` reports sizes 
 watching the given elements, which is how a test drives the exact two-pass sequence the browser
 would produce.
 
-The pure modules are tested directly and need none of this: `layout-engine.spec.ts` and
-`column-resolver.spec.ts` are plain function tests, and `options.spec.ts` covers merge, validation
-and structural equality.
+The pure modules are tested directly and need none of this: `layout-engine.spec.ts`,
+`column-resolver.spec.ts`, `layout-signature.spec.ts` and `native.spec.ts` are plain function tests,
+and `options.spec.ts` covers merge, validation and structural equality.
+
+Splitting the component moved a good deal of behaviour out from behind the harness. `ItemRegistry`
+owns the DOM-ordering logic everything else depends on, and `item-registry.spec.ts` exercises it
+against a plain container element with stub handles — no `TestBed`, no fixture, no frames. That is a
+large part of why the suite grew from 155 tests to 185: behaviour that previously could only be
+reached through a rendered grid now has a front door.
+
+What still needs the harness is what genuinely involves the component: pass sequencing, signals,
+outputs, and the interaction between them.
 
 ---
 
@@ -938,11 +1125,18 @@ independently:
 | `FrameScheduler`                                                            | Coalesce your own invalidations onto a frame                       |
 | `MasonryGridHost`, `MasonryItemHandle`                                      | Implement a custom host, or mock the grid in tests                 |
 | `parseMasonryGridOptions`, `mergeMasonryGridOptions`, `masonryOptionsEqual` | Validate or compose options ahead of time                          |
+| `supportsNativeMasonry`                                                     | Branch on native CSS masonry without repeating the feature test    |
 | `NG_MASONRY_GRID`                                                           | Import every directive in one line                                 |
 
 Because `MasonryGridHost` is an abstract class rather than an interface, it is both the DI token and
 the contract — a custom implementation can be provided under it and the stock item, stamp and sizer
 directives will drive it unmodified.
+
+The collaborators added by the split — `ItemRegistry`, `SizeWatcher`, `ItemStyles`, `Motion`,
+`GridOptionsResolver`, `layoutSignature` — are deliberately **not** exported. They are internal
+seams, useful for reading and testing this library rather than for building on: each assumes the
+pass ordering in `runLayout()`, and several hand out buffers that are overwritten on the next pass.
+Splitting the component was not a decision to widen the public API.
 
 ---
 
@@ -951,6 +1145,7 @@ directives will drive it unmodified.
 | Decision                                                | Bought                                                                 | Cost                                                                              |
 | ------------------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | Pure solver, isolated from Angular and the DOM          | Trivial unit tests, worker/SSR reuse, enforced read/write split        | Component must marshal state in and coordinates out                               |
+| Component split into single-purpose collaborators       | Each file readable and testable alone — `ItemRegistry`'s ordering, `ItemStyles`' writes and `GridOptionsResolver`'s caching no longer need a rendered grid; 185 tests instead of 155 | ~0.5 KB gzipped (8.1 → 8.6 KB; it cost 0.8 KB until a dev-mode leak the split introduced was reclaimed — see below), and more indirection: no single file describes a whole pass any more |
 | Order derived from the DOM child list, not registration | Insertions, removals and `@for` reorders just work; no `reloadItems()` | One child-list walk per pass                                                      |
 | Single shared `ResizeObserver`                          | Far cheaper than one per item; reflow-free sizes                       | Callback must demultiplex targets by identity                                     |
 | Integer signature over the inputs                       | Whole passes skipped for free                                          | Every new solver input must be folded in, or staleness results                    |

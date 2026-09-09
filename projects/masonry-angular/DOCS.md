@@ -525,24 +525,67 @@ external, reported as gzip — what a CDN actually sends. The production row is 
 
 | Library                    | Own code   | Runtime deps | Total      |
 | -------------------------- | ---------- | ------------ | ---------- |
-| **masonry-angular**        | **8.1 KB** | none         | **8.1 KB** |
+| **masonry-angular**        | **8.6 KB** | none         | **8.6 KB** |
 | `masonry-layout` (vanilla) | —          | 7.2 KB       | 7.2 KB     |
 | `angular2-masonry`         | 1.1 KB     | 7.2 KB       | 8.2 KB     |
 | `ngx-masonry`              | 1.5 KB     | 7.2 KB       | 8.6 KB     |
 
-That is roughly 0.9 KB more than the previous release, and the increase is the whole of the
-[shorthand inputs](#shorthand-inputs) with their merge order and the
-[native CSS masonry](#native-css-masonry) path. The first removes an object literal from the common
-case; the second lets a browser that has `display: grid-lanes` skip the engine entirely, which is a
-strange trade to refuse over 0.9 KB.
+### What each feature costs
 
-It leaves the library a little larger than the bare layout engine the alternatives wrap, and still
-smaller than either of them once they have added their Angular binding. That 7.2 KB is also not one
-package but six — `masonry-layout` pulls in `outlayer`, `get-size`, `ev-emitter`,
-`desandro-matches-selector` and `fizzy-ui-utils` — none of which a wrapper can fix a bug in or ship
-a feature through. Here the layout path is one dependency you control, and it buys zoneless
-scheduling, `ResizeObserver`, transform positioning, native-layout handoff and DOM-order correctness
-that the wrapped stack cannot express at any size.
+`npm run size:features` answers this by ablation: it deletes one feature from a copy of the source,
+rebuilds, and reports the difference. That is a truer number than the size of the file a feature
+lives in, because deleting a feature also removes its option, its default, its validation and the
+branches that call it.
+
+| Feature                                | Cost   | Share  |
+| -------------------------------------- | ------ | ------ |
+| [Native CSS masonry](#native-css-masonry) | 603 B  |  6.8%  |
+| Entry, exit and movement effects        | 595 B  |  6.7%  |
+| Option merging and memoisation          | 295 B  |  3.3%  |
+| Responsive breakpoints                  | 251 B  |  2.8%  |
+| [Stamps](#stamps)                       | 247 B  |  2.8%  |
+| `awaitImages`                           | 223 B  |  2.5%  |
+| [Shorthand inputs](#shorthand-inputs)   | 199 B  |  2.3%  |
+| [`masonryGridSizer`](#sizing-from-css)  | 123 B  |  1.4%  |
+| Skipping unchanged passes               | 118 B  |  1.3%  |
+| `contentVisibility`                     | 114 B  |  1.3%  |
+| `masonryIgnore`                         | 112 B  |  1.3%  |
+| `fitWidth`                              | 108 B  |  1.2%  |
+| The SSR multi-column fallback           |  90 B  |  1.0%  |
+| RTL and `verticalOrigin`                |  63 B  |  0.7%  |
+| `horizontalOrder`                       |  57 B  |  0.6%  |
+| **All of them together**                | **2.6 KB** | **29.6%** |
+
+Two things stand out. Nothing is expensive — the largest single feature is 0.6 KB, and eleven of the
+fifteen cost under 250 B each. And removing *every* one of them leaves **6.2 KB**, so roughly 70% of
+the bundle is machinery that no option can turn off: the Angular component and directive definitions,
+the solver, the observer, the scheduler, and the pass itself.
+
+That shape is what makes per-feature entry points a bad trade here. Splitting out the animations
+would save a user 0.6 KB and cost everyone an import to remember; the two features large enough to be
+worth it are already the two most people want.
+
+The one place ablation found real waste was a bug, not a feature: the dev-mode conflict warnings were
+shipping in production, because a bundler cannot prove a *class method* is unreachable the way it can
+a free function, so a method whose only caller sits behind `if (ngDevMode)` survives anyway. Moving
+them to a module-level function returned 248 B. If you add a development-only warning, write it as a
+free function for that reason.
+
+So this is not the smallest option on the table, and it is worth being plain about that: it lands
+level with `ngx-masonry` and about 0.4 KB above `angular2-masonry`. Size is not the reason to choose
+it.
+
+What the bytes buy is. That 7.2 KB the others carry is not one package but six — `masonry-layout`
+pulls in `outlayer`, `get-size`, `ev-emitter`, `desandro-matches-selector` and `fizzy-ui-utils` —
+none of which a wrapper can fix a bug in or ship a feature through, and all of which were last
+released in 2018. For the same weight, the layout path here is one codebase you control, and it buys
+zoneless scheduling, a single shared `ResizeObserver`, transform-based positioning, DOM-order
+correctness with no `reloadItems()`, server rendering that produces a usable page, and the handoff to
+native CSS masonry — none of which the wrapped stack can express at any size.
+
+The honest summary: if 8.6 KB is too much for your budget, a CSS-columns component is 1 KB and will
+serve you well. If you are choosing between this and a `masonry-layout` wrapper, the size is a wash
+and the difference is everything else.
 
 ### Where the validation went
 
@@ -575,7 +618,7 @@ Both wrap David DeSandro's `masonry-layout`. This library replaces it.
 |                    | Those                                                    | This                                             |
 | ------------------ | -------------------------------------------------------- | ------------------------------------------------ |
 | Runtime deps       | `masonry-layout`, which is 6 packages                    | none, and no peer deps beyond Angular            |
-| Layout code (gzip) | 7.2 KB across 6 packages                                 | 8.1 KB in one                                    |
+| Layout code (gzip) | 7.2 KB across 6 packages                                 | 8.6 KB in one                                    |
 | API                | NgModule, decorators                                     | standalone, signals                              |
 | Configuration      | one options object                                       | attributes for the common five, `[options]` for the rest |
 | Native CSS masonry | no                                                       | opt-in, where the browser has it                 |
