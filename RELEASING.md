@@ -2,9 +2,10 @@
 
 Everything about getting this package onto npm, written for the state the project is actually in.
 
-npm's publishing rules changed substantially through 2025 and 2026 — classic tokens were revoked,
-authenticator-app 2FA was retired, and publishing from CI became the recommended path. Most advice
-you will find online predates that. This document does not.
+npm's publishing rules changed substantially through 2025 and 2026 — classic tokens were revoked and
+authenticator-app 2FA was retired, so publishing now means a browser prompt and a short-lived
+session rather than a stored token. Most advice you will find online predates that. This document
+does not.
 
 ## Contents
 
@@ -13,7 +14,6 @@ you will find online predates that. This document does not.
 - [The first release](#the-first-release)
 - [Every release after that](#every-release-after-that)
 - [Choosing the version number](#choosing-the-version-number)
-- [Publishing from CI instead](#publishing-from-ci-instead)
 - [Errors you will actually see](#errors-you-will-actually-see)
 - [Other commands worth knowing](#other-commands-worth-knowing)
 - [Things not to do](#things-not-to-do)
@@ -22,27 +22,23 @@ you will find online predates that. This document does not.
 
 ## Where things stand
 
+Everything is published by hand from a terminal. There is no CI release pipeline, and nothing here
+assumes one.
+
 On npm right now:
 
-| Version | Published | Note |
-| ------- | --------- | ---- |
-| `0.0.0` | 2026-09-07 | Accidental first publish. |
-| `1.0.0` | 2026-09-07 | Currently the `latest` tag. |
+| Version | Note |
+| ------- | ---- |
+| `0.0.0` | An empty placeholder from the very first publish. Currently the `latest` tag. |
 
-Locally the library is at `0.0.1` and ready. Publishing it **will fail as things stand**, because npm
-11 refuses to move `latest` backwards:
-
-```
-npm error Cannot implicitly apply the "latest" tag because previously published
-version 1.0.0 is higher than the new version 0.0.1.
-```
-
-That is expected, and [the first release](#the-first-release) below clears it.
+`1.0.0` was published and then unpublished, which cleared the way for `0.0.1`. Locally the library is
+at `0.0.1`, `npm run release:dry` passes, and `latest` will move to it automatically on publish
+because `0.0.1` is higher than `0.0.0`.
 
 Two facts that shape everything here:
 
 - **A published version number is spent forever.** `0.0.0` and `1.0.0` can never be published again
-  under this name, whether or not they are unpublished. Unpublishing does not give them back.
+  under this name. Unpublishing does not give a number back — publishing is what spends it.
 - **Only `dist/masonry-angular` is publishable.** The workspace root is `"private": true` on purpose.
 
 ## One-time account setup
@@ -77,35 +73,42 @@ short-lived session instead, and long-lived write tokens now expire in 90 days m
 
 ## The first release
 
+The blocking version has already been removed, so this is now just a publish.
+
 ```bash
-# 1. Make room for 0.0.1 by removing the version that is blocking it.
-npm unpublish masonry-angular@1.0.0
+# 1. Sign in. Your browser opens for the passkey prompt; the session lasts hours, not forever.
+npm login
+npm whoami                       # should print your username
 
-# 2. Check what would go out.
-npm run release:dry
+# 2. Look at exactly what would go out. Runs the tests and the build too.
+npm run release:dry              # expect: version 0.0.1, total files: 9, no error
 
-# 3. Publish. Your browser will open for the passkey prompt.
+# 3. Publish. The browser opens again for 2FA.
 npm run release
 
-# 4. Confirm.
-npm view masonry-angular version
-npm view masonry-angular dist-tags
+# 4. Confirm the registry agrees.
+npm view masonry-angular version      # 0.0.1
+npm view masonry-angular dist-tags    # latest: 0.0.1
 ```
 
-`0.0.0` stays on the registry and becomes the second-highest version. Leave it — it is an empty
-placeholder and removing it too would delete the package entirely, locking the name for 24 hours for
-no benefit.
-
-If step 3 still complains about the `latest` tag, the unpublish has not propagated yet. Wait a minute,
-or force it explicitly with `npm publish ./dist/masonry-angular --tag latest`.
-
-Then tag the commit so the repository matches the registry:
+Then make the repository match the registry:
 
 ```bash
 git add -A && git commit -m "0.0.1"
 git tag v0.0.1
 git push --follow-tags
 ```
+
+`0.0.0` stays on the registry underneath. Leave it — removing it as well would delete the package
+entirely and lock the name for 24 hours, for no benefit. Once `0.0.1` is live you can mark it as
+not-for-use, which is reversible and breaks nothing:
+
+```bash
+npm deprecate masonry-angular@0.0.0 "Placeholder. Use the latest release."
+```
+
+Do that **after** publishing `0.0.1`, never before — deprecating every version of a package drops it
+out of npm search.
 
 ## Every release after that
 
@@ -152,34 +155,6 @@ deliberate decision that says "the API is settled" — not something to do by ac
 
 A reasonable path: publish `0.0.1`, use it in a real project for a week, go to `0.1.0` once you are
 confident, then `1.0.1` when the API stops moving. (`1.0.0` is spent and unavailable.)
-
-## Publishing from CI instead
-
-Publishing from your laptop works, but it is now the least supported path. The alternative is
-**trusted publishing** — GitHub Actions authenticates to npm over OIDC with a short-lived token that
-cannot be stolen or reused, and no secret is stored anywhere.
-
-The real reason to do it: **provenance**. A publish from CI carries a signed, public record linking
-the tarball to the exact commit and workflow that built it, shown on your npm page. You cannot get
-provenance publishing from a laptop, at all. For a new package nobody has heard of, it is a
-meaningful credibility signal.
-
-`.github/workflows/publish.yml` in this repository is ready to use. To turn it on:
-
-1. Publish at least once manually — the package has to exist first.
-2. On npmjs.com → package settings → **Trusted Publisher** → GitHub Actions.
-3. Fill in your user (`MeAkib`), the repository (`masonry-angular`), and the workflow filename
-   (`publish.yml` — filename only, not a path).
-4. Push a tag: `git tag v0.1.0 && git push --follow-tags`.
-
-The workflow runs the full suite before publishing, so a red test blocks the release.
-
-Requirements, all of which this project already meets: npm CLI 11.5.1 or newer, Node 22.14 or newer,
-a **public** repository, and a GitHub-hosted runner. Self-hosted runners are not supported.
-
-If you would rather keep a human in the loop, npm also supports **staged publishing**: CI uploads the
-tarball to a queue and it only becomes installable once you approve it with 2FA. Configure the
-trusted publisher with "stage only" and change the workflow's last step to `npm stage publish`.
 
 ## Errors you will actually see
 
@@ -232,9 +207,10 @@ tar -tzf masonry-angular-*.tgz                 # list what is inside it
   installed it. `"private": true` prevents this — leave it there.
 - **Do not unpublish to "fix" a bad release.** Publish a patch instead. Unpublishing is irreversible,
   burns the version number permanently, and breaks anyone who pinned it.
-- **Do not disable 2FA to make a script work.** If you need unattended publishing, use trusted
-  publishing from CI.
-- **Do not create a long-lived write token unless you genuinely need one.** They cap at 90 days,
-  npm is progressively restricting what they can do, and trusted publishing removes the need.
+- **Do not disable 2FA to make a script work.** Publishing is a deliberate act; the browser prompt
+  is two seconds and it is what stops a stolen laptop from shipping a release.
+- **Do not create a long-lived write token.** You do not need one to publish by hand. They cap at 90
+  days, npm is progressively restricting what they can do, and a token on disk is the single most
+  common way a maintainer account gets abused.
 - **Do not bump the root `package.json` version.** It is not the library's version and is never
   published.
