@@ -70,6 +70,9 @@ understanding the layout engine.
 [**Ways to help**](CONTRIBUTING.md#ways-to-help) lists what would help most right now.
 [Opening a pull request](CONTRIBUTING.md#opening-a-pull-request) is three commands and no ceremony.
 
+If it works well for you, a star helps other people find it — search and recommendations both weigh
+it. If it doesn't, an issue helps more.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
