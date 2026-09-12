@@ -1,0 +1,62 @@
+name: Bug report
+description: Something does not work, or does not work the way the docs say.
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. You do not need to diagnose the problem — "I expected X and
+        got Y" is a complete report. Fill in what you know and leave the rest blank.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you get instead?
+      placeholder: |
+        I set columnWidth="260" and expected four columns on a 1200px screen, but got three.
+    validations:
+      required: true
+
+  - type: input
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: >
+        A StackBlitz is the fastest way to get this fixed. Fork the starter and break it:
+        https://stackblitz.com/github/MeAkib/masonry-angular/tree/main/examples/stackblitz
+        If that is not practical, paste the relevant template and component code below instead.
+      placeholder: https://stackblitz.com/edit/...
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Code
+      description: The template and options you used. Formatted automatically, no backticks needed.
+      render: html
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Output of `npx ng version`, or just the Angular and masonry-angular versions.
+      placeholder: Angular 19.2.0, masonry-angular 0.0.1
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and OS
+      placeholder: Safari 26.4 on macOS, Chrome 141 on Windows, Chrome on Android 15
+
+  - type: checkboxes
+    id: context
+    attributes:
+      label: Anything that applies
+      options:
+        - label: It happens with server-side rendering (SSR)
+        - label: It happens only after items are added, removed or reordered
+        - label: It happens only at certain window sizes
+        - label: 'I am using `native: true`'
+        - label: I found a workaround (please describe it above — the workaround is a clue)

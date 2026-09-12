@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Getting started guide
+    url: https://github.com/MeAkib/masonry-angular/blob/main/projects/masonry-angular/GETTING-STARTED.md
+    about: Install to a responsive gallery, with the common mistakes called out.
+  - name: Full reference
+    url: https://github.com/MeAkib/masonry-angular/blob/main/projects/masonry-angular/DOCS.md
+    about: Every option, spans, stamps, testing, and migrating from ngx-masonry.
+  - name: Try it in StackBlitz
+    url: https://stackblitz.com/github/MeAkib/masonry-angular/tree/main/examples/stackblitz
+    about: A running grid you can fork to reproduce a problem.

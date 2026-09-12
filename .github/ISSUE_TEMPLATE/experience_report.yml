@@ -1,0 +1,45 @@
+name: Experience report
+description: You used it, or tested it somewhere new. Nothing is necessarily broken.
+labels: ['feedback']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        At version 0.0.1 this is the most useful thing anyone can file. It does not have to be a
+        bug, and it does not have to be polished.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What did you build or test?
+      placeholder: |
+        A photo gallery in a side panel, Angular 20, Safari 26.4 on macOS.
+    validations:
+      required: true
+
+  - type: textarea
+    id: friction
+    attributes:
+      label: What was harder than it should have been?
+      description: >
+        Anything you had to read twice, guess at, or find by trial and error. Docs that did not
+        answer your question count. So does an option whose name did not mean what you assumed.
+
+  - type: textarea
+    id: worked
+    attributes:
+      label: What worked well? (optional)
+      description: Useful for knowing what not to change.
+
+  - type: checkboxes
+    id: coverage
+    attributes:
+      label: If you tested somewhere we have not, tick it
+      options:
+        - label: Safari
+        - label: Firefox
+        - label: A mobile browser
+        - label: Right-to-left layout
+        - label: Screen reader or keyboard-only navigation
+        - label: A low-end or older device
+        - label: 'Native CSS masonry (`display: grid-lanes`) in a browser that supports it'

@@ -1,0 +1,146 @@
+name: CI
+
+# Everything here runs on every pull request, and must pass before merging.
+# The slow Angular-version matrix lives in compat.yml, which does not run here.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A new push to a branch makes the previous run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Formatting, unit tests, and both builds. Fast enough to be the gate.
+  verify:
+    name: Tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Formatting
+        run: npx prettier --check "projects/**/*.{ts,html,css,json}"
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build the library
+        run: npm run build:lib
+
+      # Also exercises the command Vercel runs, and the llms.txt sync step.
+      - name: Build the demo
+        run: npm run build
+
+      - name: Bundle size
+        run: npm run size
+
+  # The server-rendering claim, checked on a real server rather than in jsdom —
+  # which defines `window` and so could never catch a stray browser call.
+  ssr:
+    name: Server rendering
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:ssr
+
+  # Native CSS masonry in a real browser engine. Playwright is deliberately not
+  # a dependency of the package, so it is installed here instead.
+  native:
+    name: Native CSS masonry
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:lib
+
+      # Both are needed: the npm package, which the script imports, and the
+      # browser binary. Installing only the browser leaves the script unable to
+      # import playwright — and it would then skip and exit 0.
+      - name: Install Playwright and Chromium
+        run: |
+          npm i --no-save playwright
+          npx playwright install --with-deps chromium
+
+      # The script exits 0 when it cannot run, which is right on a contributor's
+      # machine and wrong here: a skipped check that reports success is worse
+      # than no check. A missing browser is CI's fault and fails the job. A
+      # Chromium that simply has no masonry implementation is not, so that one
+      # only warns.
+      - name: Native CSS masonry
+        run: |
+          set -o pipefail
+          npm run verify:native 2>&1 | tee native.log
+          if grep -qE 'skipped: (playwright is not installed|could not launch)' native.log; then
+            echo "::error::verify:native could not run. CI must exercise the native path, not skip it."
+            exit 1
+          fi
+          if grep -q 'skipped:' native.log; then
+            echo "::warning::This Chromium has no masonry implementation, so the native path went unchecked."
+          fi
+
+  # Compiles the examples in the README, the getting-started guide and llms.txt.
+  # Two examples once shipped to npm that could not compile at all; this is what
+  # stops that happening again.
+  docs:
+    name: Documentation examples
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:docs
+
+  # One check to require in the branch protection rule, so that adding or
+  # renaming a job above never means editing repository settings — and a job
+  # that silently stops running can never leave a rule waiting on a name that
+  # no longer reports.
+  #
+  # `always()` is what makes it work: without it this job would itself be
+  # skipped when something upstream fails, and a skipped required check blocks
+  # the pull request rather than failing it.
+  gate:
+    name: All checks passed
+    if: always()
+    needs: [verify, ssr, native, docs]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check the results
+        run: |
+          echo "verify: ${{ needs.verify.result }}"
+          echo "ssr:    ${{ needs.ssr.result }}"
+          echo "native: ${{ needs.native.result }}"
+          echo "docs:   ${{ needs.docs.result }}"
+          if [ "${{ contains(needs.*.result, 'failure') }}" = "true" ] \
+            || [ "${{ contains(needs.*.result, 'cancelled') }}" = "true" ] \
+            || [ "${{ contains(needs.*.result, 'skipped') }}" = "true" ]; then
+            echo "::error::At least one check did not pass."
+            exit 1
+          fi
+          echo "All checks passed."
