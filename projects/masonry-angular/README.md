@@ -3,6 +3,9 @@
 Cascading grid ("masonry") layout for Angular. Its own solver — no `masonry-layout`, no jQuery, no
 `imagesLoaded`, no runtime dependencies at all. 8.6 KB gzipped.
 
+For photo galleries, and for dashboards of charts and KPI cards — anywhere a CSS Grid leaves empty
+space under the short items.
+
 ```html
 <masonry-grid columns="3" gutter="20">
   @for (photo of photos(); track photo.id) {
@@ -131,12 +134,17 @@ Standalone became the default in Angular 19; before that, `imports:` on its own 
 
 ## Help shape it
 
-This is version 0.0.1 — early enough that your opinion still changes the API.
+This is version 0.0.2 — early enough that your opinion still changes the API.
 
-The most useful thing you can do is use it in a real project and
-[open an issue](https://github.com/MeAkib/masonry-angular/issues/new/choose) about whatever went
-wrong or felt harder than it should. "I expected X and got Y" is a complete bug report; you do not
-have to diagnose it.
+**Something broke, or felt harder than it should?**
+[Open an issue.](https://github.com/MeAkib/masonry-angular/issues/new/choose) "I expected X and got
+Y" is a complete bug report — you do not have to diagnose it. This is the single most useful thing
+anyone can do for the project right now, and it is worth more to me than any other kind of support.
+
+**Does it work well for you?** A
+[star on GitHub](https://github.com/MeAkib/masonry-angular) is how other people find this. Search
+and recommendations both weigh it, so it genuinely decides whether the next person with the same
+layout problem ever sees it.
 
 Also wanted, and none of it requires touching the library: Safari and Firefox reports, mobile and
 RTL testing, a screen-reader audit, translations of the getting-started guide, and demo examples

@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.0.2 — 2026-09-12
+
+**If you are on Angular 17 to 21, this is the release that lets you install the package at
+all.** `0.0.1` declared a peer range of `^22.0.0`, so npm refused it everywhere else.
 
 Nothing in the library's runtime changed. The one change that affects installing it is the peer
 range; everything else is documentation, examples and project setup.

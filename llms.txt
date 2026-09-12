@@ -1,8 +1,10 @@
 # masonry-angular
 
-> Cascading grid ("masonry") layout for Angular — the Pinterest-style layout where columns are equal
-> width, items have different heights, and each item goes into the shortest column. Zero runtime
-> dependencies, 8.6 KB gzipped, signal-based, zoneless, SSR-safe. Works on Angular 17.1 through 22.
+> Cascading grid ("masonry") layout for Angular — columns are equal width, items have different
+> heights, and each item goes into the shortest column instead of waiting for a new row. Use it for
+> photo galleries and, just as often, for dashboards of charts and KPI cards, where a normal CSS
+> Grid leaves empty space under every short card. Zero runtime dependencies, 8.6 KB gzipped,
+> signal-based, zoneless, SSR-safe. Works on Angular 17.1 through 22.
 
 Install with `npm install masonry-angular`. Import `NG_MASONRY_GRID` — an array of all four
 directives — into a standalone component's `imports`.
