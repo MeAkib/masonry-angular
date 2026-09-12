@@ -1,0 +1,42 @@
+name: Feature request
+description: Something the library cannot do yet.
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Open one of these before writing code. Not for permission — sometimes the answer is
+        "that already works, here is how", which saves you the work.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to build?
+      description: >
+        Describe the situation rather than the API you have in mind. The underlying problem often
+        has a solution the requested feature would not have covered.
+      placeholder: |
+        I have a feed where new posts arrive at the top while the user is scrolled down, and ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What have you tried?
+      description: Which options or approaches did you look at, and where did they fall short?
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would it look like? (optional)
+      description: An API sketch, if you have one in mind.
+      render: html
+
+  - type: markdown
+    attributes:
+      value: |
+        One thing worth knowing: every byte ships to everyone who installs this, so a new option
+        has to earn its size. A feature that can be built on top of the existing API, or lives in
+        your own code, is usually the better outcome — and if that is the answer, the issue will
+        explain how.

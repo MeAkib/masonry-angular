@@ -1,0 +1,46 @@
+name: Angular compatibility
+
+# `npm run verify:compat` installs a full Angular toolchain and builds a real
+# application once per supported major. That is minutes per version, which is
+# too slow to sit in front of every pull request — but it is the only thing that
+# actually tests the peer range, because the Angular linker runs during a
+# consumer's build and nowhere else.
+#
+# So it runs when the promise itself could have changed, on a weekly schedule to
+# catch a new Angular release breaking us, and on demand.
+on:
+  pull_request:
+    paths:
+      - 'projects/masonry-angular/package.json' # the peer range itself
+      - 'projects/masonry-angular/src/**' # anything a consumer's build compiles
+      - 'scripts/verify-compat.mjs'
+  schedule:
+    - cron: '0 6 * * 1' # Mondays, 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      majors:
+        description: 'Majors to check, space separated (blank = all)'
+        required: false
+        default: ''
+
+concurrency:
+  group: compat-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  compat:
+    name: Build a real app on each supported major
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: verify:compat
+        run: npm run verify:compat -- ${{ github.event.inputs.majors }}
