@@ -3,6 +3,9 @@
 Cascading grid ("masonry") layout for Angular. Its own solver — no `masonry-layout`, no jQuery, no
 `imagesLoaded`, no runtime dependencies at all. 8.6 KB gzipped.
 
+For photo galleries, and for dashboards of charts and KPI cards — anywhere a CSS Grid leaves empty
+space under the short items.
+
 ```html
 <masonry-grid columns="3" gutter="20">
   @for (photo of photos(); track photo.id) {
