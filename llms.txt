@@ -1,0 +1,101 @@
+# masonry-angular
+
+> Cascading grid ("masonry") layout for Angular — the Pinterest-style layout where columns are equal
+> width, items have different heights, and each item goes into the shortest column. Zero runtime
+> dependencies, 8.6 KB gzipped, signal-based, zoneless, SSR-safe. Works on Angular 17.1 through 22.
+
+Install with `npm install masonry-angular`. Import `NG_MASONRY_GRID` — an array of all four
+directives — into a standalone component's `imports`.
+
+This is the copy-paste starting point. It is correct on every supported Angular version:
+
+```ts
+import { Component, signal } from '@angular/core';
+import { NG_MASONRY_GRID } from 'masonry-angular';
+
+@Component({
+  selector: 'app-gallery',
+  // On Angular 17 and 18 only, add: standalone: true
+  imports: [NG_MASONRY_GRID],
+  template: `
+    <masonry-grid columnWidth="260" gutter="16">
+      @for (photo of photos(); track photo.id) {
+        <article masonryGridItem [masonryColSpan]="photo.featured ? 2 : 1">
+          <img [src]="photo.url" [alt]="photo.title" [width]="photo.width" [height]="photo.height" />
+        </article>
+      }
+    </masonry-grid>
+  `,
+  styles: `
+    /* The grid sets item width itself. Never set width on an item. */
+    article[masonryGridItem] img { width: 100%; display: block; }
+  `,
+})
+export class Gallery {
+  readonly photos = signal([
+    { id: 1, url: '/a.jpg', title: 'A', width: 400, height: 300, featured: false },
+  ]);
+}
+```
+
+Five things an agent writing this code most often gets wrong:
+
+1. **There is no `reloadItems()`, `layout()` call or `setTimeout` needed after changing the data.**
+   Update the array and the grid re-lays out on its own. It watches its own children. Calling
+   `layout()` manually is almost always a sign of a misunderstanding.
+2. **Never set `width` on a grid item in CSS.** The grid owns item width and will fight you,
+   producing overlapping items. To make an item wider use `[masonryColSpan]="2"`, not CSS.
+3. **Numeric breakpoint keys must be quoted in a template.** `[columns]="{ 0: 1, 768: 2 }"` is an
+   Angular template parse error (`NG5002`); write `[columns]="{ '0': 1, '768': 2 }"`. In a
+   TypeScript file, such as `provideNgMasonryGrid({ columns: { 0: 1 } })`, either form is fine.
+4. **On Angular 17 and 18, components need `standalone: true`.** It became the default in Angular 19.
+   Without it: `TS-992010: 'imports' is only valid on a component that is standalone`.
+5. **Give every `<img>` `width` and `height` attributes.** Not for sizing — the CSS still controls
+   that — but so the browser reserves space before the image loads and the grid does not re-flow.
+
+`columnWidth="260"` means "as many ~260px columns as fit" and is the whole responsive story for most
+grids; no breakpoints needed. Use `columns="3"` for a fixed count, or
+`[columns]="{ '0': 1, '768': 2 }"` for counts by breakpoint.
+
+The four directives: `<masonry-grid>` (container), `[masonryGridItem]` (an item, with
+`[masonryColSpan]` and `[masonryIgnore]`), `[masonryGridStamp]` (a region items flow around), and
+`[masonryGridSizer]` (an element whose CSS width becomes the column width).
+
+Shorthand inputs on `<masonry-grid>`: `columns`, `columnWidth`, `gutter`, `gutterX`, `gutterY` —
+all accept plain HTML attributes. Everything else goes on `[options]`: `native`, `horizontalOrder`,
+`direction`, `verticalOrigin`, `fitWidth`, `breakpointBasis`, `stretchColumns`, `minColumns`,
+`maxColumns`, `transition`, `entryAnimation`, `exitAnimation`, `autoLayout`, `observeResize`,
+`resizeContainer`, `awaitImages`, `resizeDebounce`, `contentVisibility`, `ssr`. Application-wide
+defaults come from `provideNgMasonryGrid({ ... })`.
+
+Reading the grid, via a template reference (`#grid="masonryGrid"`): `ready()`, `nativeActive()`, and
+`state()` — a signal of `{ columns, columnWidth, contentHeight, itemCount, pass }`. Outputs:
+`layoutComplete`, `removeComplete`, `itemsLoaded`.
+
+Server-side rendering works with no configuration: nothing touches `window` or `ResizeObserver` on
+the server, which renders a CSS multi-column approximation that the first client pass replaces with
+no layout shift. This is the main practical difference from `ngx-masonry`, which wraps the
+browser-only `masonry-layout` package and throws `ReferenceError: window is not defined` under SSR.
+
+Setting `{ native: true }` hands layout to browsers that support native CSS masonry
+(`display: grid-lanes`, shipped in Safari 26.4); others use the JavaScript engine and look the same.
+Under native layout the browser owns packing, so stamps and `masonryIgnore` have no effect.
+
+## Docs
+
+- [Getting started](https://raw.githubusercontent.com/MeAkib/masonry-angular/main/projects/masonry-angular/GETTING-STARTED.md): Tutorial from install to a responsive gallery with SSR, with the common mistakes called out.
+- [Full reference](https://raw.githubusercontent.com/MeAkib/masonry-angular/main/projects/masonry-angular/DOCS.md): Every option with its type and default, spans, stamps, testing, and a migration table from `ngx-masonry`.
+- [README](https://raw.githubusercontent.com/MeAkib/masonry-angular/main/projects/masonry-angular/README.md): The short version — what it is and how to configure it.
+- [Changelog](https://raw.githubusercontent.com/MeAkib/masonry-angular/main/CHANGELOG.md): What changed in each release.
+
+## Examples
+
+- [Runnable starter](https://stackblitz.com/github/MeAkib/masonry-angular/tree/main/examples/stackblitz): A StackBlitz project that installs the published package from npm.
+- [Starter source](https://raw.githubusercontent.com/MeAkib/masonry-angular/main/examples/stackblitz/src/main.ts): The same example as a single file — responsive columns, spans, add/remove/reorder.
+
+## Optional
+
+- [Architecture](https://raw.githubusercontent.com/MeAkib/masonry-angular/main/ARCHITECTURE.md): How the layout pass, invalidation and solver work internally.
+- [Contributing](https://raw.githubusercontent.com/MeAkib/masonry-angular/main/CONTRIBUTING.md): Setup, where each file lives, and how to make a change.
+- [npm](https://www.npmjs.com/package/masonry-angular): Package page.
+- [GitHub](https://github.com/MeAkib/masonry-angular): Source and issues.

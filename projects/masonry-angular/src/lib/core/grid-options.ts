@@ -24,7 +24,7 @@ import {
  * Accept a shorthand input written as a plain HTML attribute.
  *
  * `columns="3"` gives us the string `"3"`, while `[columns]="3"` gives us the
- * number `3` and `[columns]="{ 0: 1, 768: 3 }"` gives us an object. All three
+ * number `3` and `[columns]="{ '0': 1, '768': 3 }"` gives us an object. All three
  * have to end up as something the validator understands, and that is all this
  * does.
  *

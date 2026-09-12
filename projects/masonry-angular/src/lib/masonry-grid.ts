@@ -144,7 +144,7 @@ function warnAboutConflicts(
  * Responsive grids take a breakpoint map, or a target column width instead:
  *
  * ```html
- * <masonry-grid [columns]="{ 0: 1, 768: 2, 1200: 4 }" gutter="20">…</masonry-grid>
+ * <masonry-grid [columns]="{ '0': 1, '768': 2, '1200': 4 }" gutter="20">…</masonry-grid>
  * <masonry-grid columnWidth="260" gutter="20">…</masonry-grid>
  * ```
  *
@@ -236,7 +236,7 @@ export class MasonryGrid implements MasonryGridHost {
   /**
    * Fixed column count, or column counts keyed by breakpoint.
    *
-   * `columns="3"`, `[columns]="3"` and `[columns]="{ 0: 1, 768: 2, 1200: 4 }"`
+   * `columns="3"`, `[columns]="3"` and `[columns]="{ '0': 1, '768': 2, '1200': 4 }"`
    * are all accepted. Mutually exclusive with `columnWidth`.
    */
   readonly columns = input<

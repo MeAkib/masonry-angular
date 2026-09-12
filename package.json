@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "ng": "ng",
+    "prebuild": "node scripts/sync-llms.mjs",
     "start": "npm run build:lib && ng serve demo",
     "build": "npm run build:lib && ng build demo",
     "build:lib": "ng build masonry-angular",
@@ -17,9 +18,14 @@
     "size": "npm run build:lib && node scripts/bundle-size.mjs",
     "verify:native": "node scripts/verify-native.mjs",
     "size:features": "npm run build:lib && node scripts/feature-size.mjs",
-    "verify:ssr": "npm run build:lib && node scripts/verify-ssr.mjs"
+    "verify:ssr": "npm run build:lib && node scripts/verify-ssr.mjs",
+    "verify:compat": "node scripts/verify-compat.mjs",
+    "verify:docs": "npm run build:lib && node scripts/verify-docs.mjs"
   },
   "packageManager": "npm@11.12.1",
+  "engines": {
+    "node": "^22.22.3 || ^24.15.0 || >=26.0.0"
+  },
   "dependencies": {
     "@angular/common": "^22.0.0",
     "@angular/compiler": "^22.0.0",

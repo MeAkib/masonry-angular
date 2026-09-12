@@ -830,7 +830,7 @@ first.
 **The shorthands are ordinary inputs with a coercion transform.** `coerceShorthand` (exported from
 `core/grid-options.ts` alongside the resolver, since it is the other half of the same job) turns the
 string an HTML attribute produces into a number, which is what lets `columns="3"` work with no binding and
-no object literal, while `[columns]="{ 0: 1, 768: 3 }"` passes through untouched. A string that is
+no object literal, while `[columns]="{ '0': 1, '768': 3 }"` passes through untouched. A string that is
 _not_ a number is deliberately passed through as well rather than coerced to `NaN`: the dev-mode
 validator downstream then reports it with a precise path, which is far more useful than a silently
 wrong column count.

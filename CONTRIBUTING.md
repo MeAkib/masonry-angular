@@ -12,6 +12,7 @@ behind the machinery rather than the instructions for changing it, read
 
 ## Table of contents
 
+- [Ways to help](#ways-to-help)
 - [Getting set up](#getting-set-up)
 - [The scripts](#the-scripts)
 - [Where everything lives](#where-everything-lives)
@@ -20,6 +21,99 @@ behind the machinery rather than the instructions for changing it, read
 - [Testing](#testing)
 - [Debugging](#debugging)
 - [Performance rules to not break](#performance-rules-to-not-break)
+
+---
+
+## Ways to help
+
+This library is young. Version 0.0.1 is one person's answer to one person's problem, and the fastest
+way it gets better is other people running it against situations I have not seen.
+
+**You do not need to write code to help.** These are listed roughly by how useful they are right
+now, not by how hard they are.
+
+### Tell us what broke, or what was confusing
+
+The single most valuable contribution today. Use it in a real project and open an issue about
+whatever went wrong — a layout that came out crooked, an option that did not do what its name
+suggested, a paragraph in the docs you had to read three times.
+
+"I expected X and got Y" is a complete and welcome bug report. You do not have to diagnose it.
+
+If you got something working only after a workaround, that is a bug report too: the workaround is
+the evidence.
+
+### Try it where we have not
+
+Verified so far: Angular 17.1 through 22, and native CSS masonry in Chromium. That leaves gaps, and
+a report either way is useful:
+
+- **Safari and Firefox**, especially Safari 26.4+ where `display: grid-lanes` is real
+- **Mobile browsers**, particularly during orientation changes
+- **Right-to-left layouts** in an app that genuinely uses one
+- **Screen readers and keyboard navigation** — the grid positions items with transforms, and nobody
+  has yet audited what that does to focus order
+- **Low-end devices**, where the layout cost actually shows
+
+### Add an example
+
+`projects/demo` has five. If you built something the existing examples do not cover — infinite
+scroll, a filtered gallery, drag to reorder, a chat or feed layout — it is worth adding. Examples
+are also the easiest first pull request: no library code to understand.
+
+### Improve the docs
+
+Corrections are welcome and so are translations. English is not the first language of most people
+who will use this, and [GETTING-STARTED.md](projects/masonry-angular/GETTING-STARTED.md) is the
+document that matters most.
+
+If an explanation only makes sense to someone who already understands it, say so. That is a real
+defect.
+
+### Write code
+
+Bug fixes are always welcome. For a new feature, open an issue first — not for permission, but
+because the answer is sometimes "this can already be done with X", and that is a faster outcome for
+you than a rejected pull request.
+
+Two things worth knowing before you start: every byte ships to every user, so a feature has to
+justify its size ([DOCS.md](projects/masonry-angular/DOCS.md#bundle-size) has the per-feature
+breakdown), and the layout loop has rules that are easy to break by accident — see
+[Performance rules to not break](#performance-rules-to-not-break).
+
+### What we would rather you did not do
+
+Nothing here is a rule about you, only about scope:
+
+- **A runtime dependency.** Zero dependencies is the point of this library, not an accident.
+- **A rewrite.** If the architecture is wrong, an issue explaining why is more useful than a branch.
+- **Reformatting.** Run `npm run format` on what you touched; a diff full of unrelated whitespace is
+  hard to review.
+
+## Opening a pull request
+
+There is no approval process to get through and no template you have to fill in perfectly.
+
+```bash
+npm install
+npm test              # 185 tests, a few seconds
+npm run format        # prettier, on what you changed
+```
+
+Then open it. What helps a review go quickly:
+
+- **Say what problem it solves**, not only what it changes. A reproduction beats a description.
+- **One thing per pull request.** Two small ones merge faster than one big one.
+- **Add a test if you fixed a bug.** A test that fails before your change and passes after is the
+  clearest possible argument. If you are not sure how, open it anyway and say so — that is a fine
+  thing to work out together in review.
+- **Run `npm run verify:compat` if you touched anything public.** It builds a real app on every
+  supported Angular major, and it catches things type-checking cannot.
+
+Draft pull requests are welcome. So is an unfinished branch with a question attached.
+
+If you have never contributed to an open-source project before and want to start here: that is
+genuinely welcome, and saying so in the issue is not something to be shy about.
 
 ---
 

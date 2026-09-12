@@ -1,0 +1,113 @@
+:root {
+  color-scheme: light dark;
+  --bg: #fbfbfa;
+  --fg: #1b1b18;
+  --muted: #6b6b64;
+  --card: #ffffff;
+  --line: #e6e4df;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17171a;
+    --fg: #ededea;
+    --muted: #9a9a92;
+    --card: #212126;
+    --line: #33333a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 20px;
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    15px/1.5 ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}
+
+header {
+  margin-bottom: 20px;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+}
+
+header p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+button {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--card);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/*
+  The one rule that matters: never set a width on a grid item — the grid owns
+  it. Padding, borders, background and radius are all yours.
+*/
+article[masonryGridItem] {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+article[masonryGridItem] img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--line);
+}
+
+article[masonryGridItem] h2 {
+  margin: 0;
+  padding: 9px 11px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
