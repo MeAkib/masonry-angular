@@ -3,8 +3,9 @@
 This tutorial builds one thing: a responsive photo gallery. Each step ends with something that runs,
 and each step makes the gallery better.
 
-You need Angular 22 or newer. Every example uses standalone components, signals and the built-in
-`@for` / `@if` blocks.
+You need Angular 17.1 or newer — anything from 17.1 through 22 works. Every example uses standalone
+components, signals and the built-in `@for` / `@if` blocks, so if you are on 17 make sure your own
+project is set up for those.
 
 For the full option list, see [DOCS.md](./DOCS.md). This page teaches; that page is the reference.
 
@@ -30,10 +31,16 @@ For the full option list, see [DOCS.md](./DOCS.md). This page teaches; that page
 npm install masonry-angular
 ```
 
-There are no runtime dependencies. Angular 22 or newer is the only requirement.
+There are no runtime dependencies. Angular 17.1 or newer is the only requirement; 17.1 through 22 are
+all verified by building a real application against the published package.
 
 Import `NG_MASONRY_GRID`. It is an array holding all four directives, so one entry in `imports`
 gives you the grid, items, stamps and the sizer.
+
+The components below are written the Angular 19-and-later way, where standalone is the default. On
+**Angular 17 or 18**, add `standalone: true` alongside `imports` — without it the compiler rejects
+the component with `TS-992010: 'imports' is only valid on a component that is standalone`. That is
+the only difference across supported versions.
 
 ```ts
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
@@ -141,12 +148,18 @@ off:
 When the design says "two columns on a tablet, four on a desktop", say that:
 
 ```html
-<masonry-grid [columns]="{ 0: 1, 768: 2, 1200: 4 }" gutter="20">…</masonry-grid>
+<masonry-grid [columns]="{ '0': 1, '768': 2, '1200': 4 }" gutter="20">…</masonry-grid>
 ```
 
 The keys are minimum widths in px. The count that applies is the one for the largest key at or below
 the measured width. Note the square brackets — this is an object, so it needs a binding, while
 `columns="3"` and `columnWidth="260"` are plain attributes.
+
+The quotes around the numbers are required, and the reason is Angular rather than this library:
+its template parser only accepts identifiers and strings as object keys, so `{ 0: 1 }` is a
+compile error inside a template and `{ '0': 1 }` is not. The two are the same object at runtime —
+JavaScript object keys are strings either way — so this is punctuation, not semantics. In a
+TypeScript file, such as a `provideNgMasonryGrid()` call, either form is fine.
 
 You can use names instead of numbers. The default scale is Tailwind's, so a grid written against
 `lg` lines up with the rest of your styles:
@@ -159,7 +172,7 @@ You can use names instead of numbers. The default scale is Tailwind's, so a grid
 <masonry-grid [columns]="{ xs: 1, sm: 2, md: 3, xl: 4 }" gutter="20">…</masonry-grid>
 ```
 
-Names and raw widths can be mixed: `{ xs: 1, md: 2, 1440: 5 }` is valid. You can redefine the scale,
+Names and raw widths can be mixed: `{ xs: 1, md: 2, '1440': 5 }` is valid. You can redefine the scale,
 or add names of your own, with the `breakpoints` option — see [DOCS.md](./DOCS.md#named-breakpoints).
 
 ### The part that surprises people
@@ -173,7 +186,7 @@ It is not what CSS media queries do, so if you paste breakpoints over from a sty
 will behave differently. To match the viewport instead:
 
 ```html
-<masonry-grid [columns]="{ 0: 1, 768: 2, 1200: 4 }" [options]="{ breakpointBasis: 'viewport' }">
+<masonry-grid [columns]="{ '0': 1, '768': 2, '1200': 4 }" [options]="{ breakpointBasis: 'viewport' }">
 ```
 
 `columnWidth` never has this problem: it always follows the space actually available.

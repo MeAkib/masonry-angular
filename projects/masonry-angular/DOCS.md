@@ -44,7 +44,7 @@ binding either:
 
 | Input         | As an attribute     | As a binding                        |                                                                              |
 | ------------- | ------------------- | ----------------------------------- | ------------------------------------------------------------------------------ |
-| `columns`     | `columns="3"`       | `[columns]="{ 0: 1, 768: 3 }"`      | Fixed count, or counts keyed by breakpoint. Mutually exclusive with `columnWidth`. |
+| `columns`     | `columns="3"`       | `[columns]="{ '0': 1, '768': 3 }"`  | Fixed count, or counts keyed by breakpoint. Mutually exclusive with `columnWidth`. |
 | `columnWidth` | `columnWidth="260"` | `[columnWidth]="cardWidth()"`       | Target column width in px; the count follows the available space.            |
 | `gutter`      | `gutter="20"`       | `[gutter]="dense() ? 8 : 24"`       | Gap in px, both axes.                                                        |
 | `gutterX`     | `gutterX="24"`      | `[gutterX]="…"`                     | Horizontal gap, when it should differ from `gutter`.                         |
@@ -95,8 +95,8 @@ nothing and never queues a layout pass on its own.
 | `fitWidth`                  | `boolean`                      | `false`        | Shrink the grid to the width its columns actually occupy, so it can be centred.                                |
 
 ```html
-<masonry-grid [columns]="{ 0: 1, 640: 2, 1024: 3, 1440: 4 }">  <!-- responsive -->
-<masonry-grid columnWidth="260">                               <!-- as many 260px columns as fit -->
+<masonry-grid [columns]="{ '0': 1, '640': 2, '1024': 3, '1440': 4 }">  <!-- responsive -->
+<masonry-grid columnWidth="260">                                       <!-- as many 260px columns as fit -->
 ```
 
 #### Named breakpoints
@@ -106,9 +106,9 @@ is used, the count that applies is the one for the largest breakpoint at or belo
 width — and that width is the container's unless `breakpointBasis: 'viewport'` says otherwise.
 
 ```html
-<masonry-grid [columns]="{ sm: 1, md: 2, lg: 3, xl: 4 }">   <!-- named -->
-<masonry-grid [columns]="{ 0: 1, 640: 2, 1440: 4 }">        <!-- raw widths -->
-<masonry-grid [columns]="{ xs: 1, md: 2, 1440: 5 }">        <!-- both -->
+<masonry-grid [columns]="{ sm: 1, md: 2, lg: 3, xl: 4 }">    <!-- named -->
+<masonry-grid [columns]="{ '0': 1, '640': 2, '1440': 4 }">   <!-- raw widths -->
+<masonry-grid [columns]="{ xs: 1, md: 2, '1440': 5 }">       <!-- both -->
 ```
 
 The default scale is Tailwind's, exported as `DEFAULT_MASONRY_BREAKPOINTS`:
