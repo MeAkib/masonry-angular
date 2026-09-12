@@ -19,7 +19,8 @@
     "verify:native": "node scripts/verify-native.mjs",
     "size:features": "npm run build:lib && node scripts/feature-size.mjs",
     "verify:ssr": "npm run build:lib && node scripts/verify-ssr.mjs",
-    "verify:compat": "node scripts/verify-compat.mjs"
+    "verify:compat": "node scripts/verify-compat.mjs",
+    "verify:docs": "npm run build:lib && node scripts/verify-docs.mjs"
   },
   "packageManager": "npm@11.12.1",
   "engines": {
