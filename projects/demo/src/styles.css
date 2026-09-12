@@ -47,7 +47,7 @@ h3 {
 /* ---- Shared example chrome ------------------------------------------------ */
 
 .lede {
-  max-width: 68ch;
+  /* max-width: 68ch; */
   margin: 0 0 22px;
   color: var(--muted);
   line-height: 1.6;
