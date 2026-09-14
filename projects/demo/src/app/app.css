@@ -1,79 +1,191 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+}
+
+/*
+ * One measure for the header, the content and the footer, so the brand, the
+ * first card and the footer text all start on the same vertical line.
+ */
+.shell {
+  width: 100%;
+  max-width: 1560px;
+  margin: 0 auto;
+  padding-inline: var(--s5);
+}
+
+/* ---- Masthead ------------------------------------------------------------- */
+
+/*
+ * Sticky, and deliberately short. The examples are long, and on a page whose
+ * whole subject is scrolling through a grid, losing the nav to the top of the
+ * document is a small but constant annoyance.
+ */
 .masthead {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.masthead .shell {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: var(--s3) var(--s5);
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 26px;
-  border-bottom: 1px solid var(--line);
-  padding: 10px 10px;
+  min-height: 58px;
+  padding-block: var(--s2);
 }
 
-.masthead h1 {
-  margin: 0 0 6px;
-  font-size: 1.55rem;
+.brand {
+  display: inline-flex;
+  gap: var(--s2);
+  align-items: center;
+  color: var(--accent);
+  text-decoration: none;
 }
 
-.masthead p {
-  margin: 0;
-  color: var(--muted);
+.mark {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 6px;
+}
+
+.wordmark {
+  color: var(--text);
+  font-size: 0.98rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
 }
 
 nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 2px;
+  margin-inline: auto;
 }
 
 nav a {
-  padding: 6px 12px;
-  border: 1px solid transparent;
-  border-radius: 8px;
+  padding: 5px var(--s3);
+  border-radius: var(--r1);
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.86rem;
   text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
 }
 
 nav a:hover {
+  background: var(--sunken);
   color: var(--text);
-  background: var(--btn);
 }
 
 nav a.active {
-  border-color: var(--line);
-  background: var(--panel);
+  background: var(--accent-soft);
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 620;
 }
 
-main {
-  padding: 20px 10px;
-}
-
-.masthead .links {
+.links {
   display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
+  gap: var(--s4);
   align-items: center;
-  margin-top: 10px;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
 }
 
-.masthead .links a {
-  color: var(--accent);
+.links a {
+  color: var(--muted);
   text-decoration: none;
   border-bottom: 1px solid transparent;
 }
 
-.masthead .links a:hover {
-  border-bottom-color: currentcolor;
+.links a:hover {
+  color: var(--text);
+  border-bottom-color: var(--line-strong);
 }
 
-.masthead .links code {
-  padding: 2px 8px;
+.links code {
+  padding: 3px var(--s2);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 7px;
   background: var(--panel);
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+/* ---- Content and footer --------------------------------------------------- */
+
+main {
+  padding-block: var(--s6) var(--s7);
+}
+
+footer {
+  padding-block: var(--s6) var(--s7);
+  margin-top: var(--s7);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+footer p {
+  margin: 0 0 var(--s2);
+  max-width: 70ch;
+}
+
+footer a {
+  color: var(--muted);
+}
+
+footer a:hover {
+  color: var(--accent);
+}
+
+/* ---- Narrow --------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  /* The install command is the first thing worth dropping: it is a convenience,
+     and at this width the nav needs the room more. */
+  .links code {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .shell {
+    padding-inline: var(--s4);
+  }
+
+  /* Stop pinning the header once it needs two rows — half a phone screen of
+     chrome is worse than scrolling back up for the nav. */
+  .masthead {
+    position: static;
+  }
+
+  .masthead .shell {
+    align-items: flex-start;
+  }
+
+  nav {
+    order: 3;
+    width: 100%;
+    margin-inline: 0;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+
+  nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .links {
+    margin-left: auto;
+  }
 }

@@ -16,7 +16,11 @@ type SizingMode = 'breakpoints' | 'fixed' | 'columnWidth';
   imports: [NG_MASONRY_GRID, DecimalPipe, DemoExample],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <demo-example [code]="code">
+    <demo-example
+      heading="Gallery"
+      summary="Responsive columns from a breakpoint map, with images the grid holds items back for until they decode."
+      [code]="code"
+    >
       <p class="lede" lede>
         Column count follows the container width through a breakpoint map —
         <code>&#123; xs: 1, sm: 2, md: 3, xl: 4, '2xl': 5 &#125;</code>, named against the default

@@ -1,35 +1,60 @@
 <header class="masthead">
-  <div>
-    <h1>masonry-angular</h1>
-    <p>Zero-dependency masonry for Angular — signal-based, zoneless and SSR-safe.</p>
+  <div class="shell">
+    <a class="brand" routerLink="/" aria-label="masonry-angular home">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="7" fill="currentColor" />
+        <g fill="#fff">
+          <rect x="6" y="6" width="6" height="11" rx="1.6" />
+          <rect x="6" y="19" width="6" height="7" rx="1.6" />
+          <rect x="13" y="6" width="6" height="7" rx="1.6" />
+          <rect x="13" y="15" width="6" height="11" rx="1.6" />
+          <rect x="20" y="6" width="6" height="14" rx="1.6" />
+          <rect x="20" y="22" width="6" height="4" rx="1.6" />
+        </g>
+      </svg>
+      <span class="wordmark">masonry-angular</span>
+    </a>
 
-    <!-- Somebody who likes what they see here needs a way to reach the package
-         and the source without hunting for it. -->
-    <p class="links">
-      <a href="https://www.npmjs.com/package/masonry-angular" target="_blank" rel="noopener">
-        npm
-      </a>
-      <a href="https://github.com/MeAkib/masonry-angular" target="_blank" rel="noopener">
-        GitHub
-      </a>
-      <a
-        href="https://stackblitz.com/github/MeAkib/masonry-angular/tree/main/examples/stackblitz"
-        target="_blank"
-        rel="noopener"
-      >
-        StackBlitz
-      </a>
+    <nav aria-label="examples">
+      @for (example of examples; track example.path) {
+        <a [routerLink]="example.path" routerLinkActive="active">{{ example.label }}</a>
+      }
+    </nav>
+
+    <!-- Someone who likes what they see needs a way to reach the package and the
+         source without going back to wherever they came from. -->
+    <div class="links">
+      <a href="https://github.com/MeAkib/masonry-angular" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://www.npmjs.com/package/masonry-angular" target="_blank" rel="noopener">npm</a>
       <code>npm i masonry-angular</code>
-    </p>
+    </div>
   </div>
-
-  <nav>
-    @for (example of examples; track example.path) {
-      <a [routerLink]="example.path" routerLinkActive="active">{{ example.label }}</a>
-    }
-  </nav>
 </header>
 
-<main>
+<main class="shell">
   <router-outlet />
 </main>
+
+<footer class="shell">
+  <p>
+    Zero-dependency masonry layout for Angular 17.1–22 — 8.6 KB, signal-based, zoneless, SSR-safe.
+  </p>
+  <p>
+    <a href="https://github.com/MeAkib/masonry-angular" target="_blank" rel="noopener">Source</a>
+    ·
+    <a
+      href="https://stackblitz.com/github/MeAkib/masonry-angular/tree/main/examples/stackblitz"
+      target="_blank"
+      rel="noopener"
+      >Runnable starter</a
+    >
+    ·
+    <a
+      href="https://github.com/MeAkib/masonry-angular/issues/new/choose"
+      target="_blank"
+      rel="noopener"
+      >Report a problem</a
+    >
+    · MIT
+  </p>
+</footer>

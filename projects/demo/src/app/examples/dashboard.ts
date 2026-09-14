@@ -23,7 +23,11 @@ import { DashboardWidget } from './dashboard-widget';
   imports: [NG_MASONRY_GRID, DashboardWidget, DemoExample],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <demo-example [code]="code">
+    <demo-example
+      heading="Dashboard"
+      summary="Fixed-size tiles with per-grid breakpoints, each body loaded only when it scrolls into view."
+      [code]="code"
+    >
       <p class="lede" lede>
         Twenty tiles, each a static size: height in pixels, width in whole columns via
         <code>masonryColSpan</code>. No body is rendered up front — every one sits behind
