@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { DemoExample } from '../example-frame';
 import { NG_MASONRY_GRID, type MasonryGridOptions } from 'masonry-angular';
 
 import { makeCards, type DemoCard } from './cards';
@@ -15,41 +16,59 @@ const OPTIONS: MasonryGridOptions = {
  */
 @Component({
   selector: 'dynamic-example',
-  imports: [NG_MASONRY_GRID],
+  imports: [NG_MASONRY_GRID, DemoExample],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <p class="lede">
-      Every button below mutates the source array and nothing else. Item order is derived from the
-      DOM at layout time, so a prepend really lands first — the ordering bug that makes other
-      masonry wrappers expose a manual <code>reloadItems()</code> cannot occur here.
-    </p>
+    <demo-example [code]="code">
+      <p class="lede" lede>
+        Every button below mutates the source array and nothing else. Item order is derived from the
+        DOM at layout time, so a prepend really lands first — the ordering bug that makes other
+        masonry wrappers expose a manual <code>reloadItems()</code> cannot occur here.
+      </p>
 
-    <section class="controls">
-      <fieldset>
-        <legend>items — {{ cards().length }}</legend>
-        <button type="button" (click)="append(1)">append</button>
-        <button type="button" (click)="append(6)">append 6</button>
-        <button type="button" (click)="prepend()">prepend</button>
-        <button type="button" (click)="removeFirst()">remove first</button>
-        <button type="button" (click)="removeRandom()">remove random</button>
-        <button type="button" (click)="shuffle()">shuffle</button>
-        <button type="button" (click)="reset()">reset</button>
-      </fieldset>
-    </section>
+      <section class="controls" config>
+        <fieldset>
+          <legend>items — {{ cards().length }}</legend>
+          <button type="button" (click)="append(1)">append</button>
+          <button type="button" (click)="append(6)">append 6</button>
+          <button type="button" (click)="prepend()">prepend</button>
+          <button type="button" (click)="removeFirst()">remove first</button>
+          <button type="button" (click)="removeRandom()">remove random</button>
+          <button type="button" (click)="shuffle()">shuffle</button>
+          <button type="button" (click)="reset()">reset</button>
+        </fieldset>
+      </section>
 
-    <masonry-grid [options]="options">
-      @for (card of cards(); track card.id) {
-        <article masonryGridItem class="card" [style.--hue]="card.hue">
-          <div class="card-body" [style.min-height.px]="card.height">
-            <h2>{{ card.title }}</h2>
-            <p>{{ card.body }}</p>
-          </div>
-        </article>
-      }
-    </masonry-grid>
+      <masonry-grid preview [options]="options">
+        @for (card of cards(); track card.id) {
+          <article masonryGridItem class="card" [style.--hue]="card.hue">
+            <div class="card-body" [style.min-height.px]="card.height">
+              <h2>{{ card.title }}</h2>
+              <p>{{ card.body }}</p>
+            </div>
+          </article>
+        }
+      </masonry-grid>
+    </demo-example>
   `,
 })
 export class DynamicExample {
+  readonly code = `<!-- There is no reloadItems(). Change the array and the grid
+     follows â prepends land first, because item order is read
+     from the DOM on every pass. -->
+<masonry-grid columnWidth="200" gutter="14" (removeComplete)="onRemoved($event)">
+  @for (card of cards(); track card.id) {
+    <article masonryGridItem (click)="remove(card.id)">
+      {{ card.title }}
+    </article>
+  }
+</masonry-grid>
+
+<!-- component -->
+add()     { this.cards.update((c) => [...c, makeCard(this.next++)]); }
+prepend() { this.cards.update((c) => [makeCard(this.next++), ...c]); }
+remove(id: number) { this.cards.update((c) => c.filter((x) => x.id !== id)); }`;
+
   readonly options = OPTIONS;
   readonly cards = signal<DemoCard[]>(makeCards(15));
 

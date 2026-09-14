@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { DemoExample } from '../example-frame';
 import { NG_MASONRY_GRID, type MasonryGridOptions } from 'masonry-angular';
 
 import { WIDGETS } from './dashboard-data';
@@ -19,91 +20,111 @@ import { DashboardWidget } from './dashboard-widget';
  */
 @Component({
   selector: 'dashboard-example',
-  imports: [NG_MASONRY_GRID, DashboardWidget],
+  imports: [NG_MASONRY_GRID, DashboardWidget, DemoExample],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <p class="lede">
-      Twenty tiles, each a static size: height in pixels, width in whole columns via
-      <code>masonryColSpan</code>. No body is rendered up front — every one sits behind
-      <code>&#64;defer (on viewport)</code> and loads as its placeholder scrolls into view. Because
-      the tile already owns its height, the swap costs no relayout: the grid positioned the board
-      from the skeletons, and the real content lands in exactly the same box.
-    </p>
+    <demo-example [code]="code">
+      <p class="lede" lede>
+        Twenty tiles, each a static size: height in pixels, width in whole columns via
+        <code>masonryColSpan</code>. No body is rendered up front — every one sits behind
+        <code>&#64;defer (on viewport)</code> and loads as its placeholder scrolls into view.
+        Because the tile already owns its height, the swap costs no relayout: the grid positioned
+        the board from the skeletons, and the real content lands in exactly the same box.
+      </p>
 
-    <p class="lede">
-      Tiles are wider than article cards, so this board also redefines what the breakpoint names
-      mean — <code>breakpoints: &#123; sm: 620, md: 980, … &#125;</code> — while
-      <code>columns</code> still reads as <code>&#123; xs: 1, sm: 2, md: 3, … &#125;</code>. The
-      override merges over the defaults and is scoped to this grid.
-    </p>
+      <p class="lede" lede>
+        Tiles are wider than article cards, so this board also redefines what the breakpoint names
+        mean — <code>breakpoints: &#123; sm: 620, md: 980, … &#125;</code> — while
+        <code>columns</code> still reads as <code>&#123; xs: 1, sm: 2, md: 3, … &#125;</code>. The
+        override merges over the defaults and is scoped to this grid.
+      </p>
 
-    <section class="controls">
-      <fieldset>
-        <legend>packing</legend>
-        <label>
+      <section class="controls" config>
+        <fieldset>
+          <legend>packing</legend>
+          <label>
+            <input
+              type="checkbox"
+              [checked]="horizontalOrder()"
+              (change)="horizontalOrder.set($any($event.target).checked)"
+            />
+            horizontal order
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              [checked]="dense()"
+              (change)="dense.set($any($event.target).checked)"
+            />
+            dense gutter
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>max columns — {{ maxColumns() }}</legend>
           <input
-            type="checkbox"
-            [checked]="horizontalOrder()"
-            (change)="horizontalOrder.set($any($event.target).checked)"
+            type="range"
+            min="2"
+            max="6"
+            [value]="maxColumns()"
+            (input)="maxColumns.set(+$any($event.target).value)"
           />
-          horizontal order
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            [checked]="dense()"
-            (change)="dense.set($any($event.target).checked)"
-          />
-          dense gutter
-        </label>
-      </fieldset>
+        </fieldset>
+      </section>
 
-      <fieldset>
-        <legend>max columns — {{ maxColumns() }}</legend>
-        <input
-          type="range"
-          min="2"
-          max="6"
-          [value]="maxColumns()"
-          (input)="maxColumns.set(+$any($event.target).value)"
-        />
-      </fieldset>
-    </section>
+      <masonry-grid preview [options]="options()">
+        @for (widget of widgets; track widget.id) {
+          <article
+            masonryGridItem
+            [masonryColSpan]="widget.span"
+            class="widget"
+            [style.--hue]="widget.hue"
+            [style.height.px]="widget.height"
+          >
+            <header>
+              <h2>{{ widget.title }}</h2>
+              <span class="dims">{{ widget.span }} col · {{ widget.height }}px</span>
+            </header>
 
-    <masonry-grid [options]="options()">
-      @for (widget of widgets; track widget.id) {
-        <article
-          masonryGridItem
-          [masonryColSpan]="widget.span"
-          class="widget"
-          [style.--hue]="widget.hue"
-          [style.height.px]="widget.height"
-        >
-          <header>
-            <h2>{{ widget.title }}</h2>
-            <span class="dims">{{ widget.span }} col · {{ widget.height }}px</span>
-          </header>
-
-          <!--
-            The item element stays outside the block, so the tile is registered
-            with the grid — and holds its place — from the very first pass. Only
-            the body is deferred, and the viewport trigger watches the placeholder.
-          -->
-          @defer (on viewport) {
-            <dashboard-widget [widget]="widget" />
-          } @placeholder (minimum 400ms) {
-            <div class="skeleton" aria-hidden="true">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-          }
-        </article>
-      }
-    </masonry-grid>
+            <!--
+              The item element stays outside the block, so the tile is registered
+              with the grid — and holds its place — from the very first pass. Only
+              the body is deferred, and the viewport trigger watches the placeholder.
+            -->
+            @defer (on viewport) {
+              <dashboard-widget [widget]="widget" />
+            } @placeholder (minimum 400ms) {
+              <div class="skeleton" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            }
+          </article>
+        }
+      </masonry-grid>
+    </demo-example>
   `,
 })
 export class DashboardExample {
+  readonly code = `<!-- Tiles declare their own size: height in px, width in whole
+     columns. Because the size is known before the content exists,
+     each body can sit behind @defer without moving anything. -->
+<masonry-grid [columns]="{ xs: 1, sm: 2, md: 3 }"
+              [options]="{ breakpoints: { sm: 620, md: 980 } }"
+              gutter="16">
+  @for (w of widgets(); track w.id) {
+    <article masonryGridItem [masonryColSpan]="w.span" [style.height.px]="w.height">
+      <h3>{{ w.title }}</h3>
+      @defer (on viewport) {
+        <dashboard-widget [widget]="w" />
+      } @placeholder {
+        <div class="skeleton"></div>
+      }
+    </article>
+  }
+</masonry-grid>`;
+
   readonly widgets = WIDGETS;
 
   readonly horizontalOrder = signal(false);

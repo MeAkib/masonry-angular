@@ -1,5 +1,6 @@
 import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { DemoExample } from '../example-frame';
 import { NG_MASONRY_GRID, type MasonryGridOptions, type MasonryLayoutEvent } from 'masonry-angular';
 
 interface Tile {
@@ -22,94 +23,115 @@ function makeTiles(count: number): Tile[] {
  */
 @Component({
   selector: 'performance-example',
-  imports: [NG_MASONRY_GRID, DecimalPipe],
+  imports: [NG_MASONRY_GRID, DecimalPipe, DemoExample],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <p class="lede">
-      Solve time is measured across the whole pass — reading measurements, running the solver and
-      writing every transform. Sizes arrive pre-computed from one shared
-      <code>ResizeObserver</code>, so a pass performs no forced reflow, and repeated passes with
-      identical input return before touching the DOM. Turn on <code>contentVisibility</code> to let
-      the browser skip rendering off-screen tiles.
-    </p>
+    <demo-example [code]="code">
+      <p class="lede" lede>
+        Solve time is measured across the whole pass — reading measurements, running the solver and
+        writing every transform. Sizes arrive pre-computed from one shared
+        <code>ResizeObserver</code>, so a pass performs no forced reflow, and repeated passes with
+        identical input return before touching the DOM. Turn on <code>contentVisibility</code> to
+        let the browser skip rendering off-screen tiles.
+      </p>
 
-    <section class="controls">
-      <fieldset>
-        <legend>tiles — {{ count() }}</legend>
-        <input
-          type="range"
-          min="50"
-          max="4000"
-          step="50"
-          [value]="count()"
-          (input)="count.set(+$any($event.target).value)"
-        />
-      </fieldset>
-
-      <fieldset>
-        <legend>options</legend>
-        <label>
+      <section class="controls" config>
+        <fieldset>
+          <legend>tiles — {{ count() }}</legend>
           <input
-            type="checkbox"
-            [checked]="contentVisibility()"
-            (change)="contentVisibility.set($any($event.target).checked)"
+            type="range"
+            min="50"
+            max="4000"
+            step="50"
+            [value]="count()"
+            (input)="count.set(+$any($event.target).value)"
           />
-          contentVisibility
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            [checked]="transitions()"
-            (change)="transitions.set($any($event.target).checked)"
-          />
-          position transitions
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            [checked]="animate()"
-            (change)="animate.set($any($event.target).checked)"
-          />
-          entry animation
-        </label>
-      </fieldset>
+        </fieldset>
 
-      @if (stats(); as stat) {
-        <dl class="stats">
-          <div>
-            <dt>columns</dt>
-            <dd>{{ stat.columns }}</dd>
-          </div>
-          <div>
-            <dt>items</dt>
-            <dd>{{ stat.itemCount }}</dd>
-          </div>
-          <div>
-            <dt>height</dt>
-            <dd>{{ stat.height | number: '1.0-0' }}px</dd>
-          </div>
-          <div>
-            <dt>last pass</dt>
-            <dd>{{ stat.durationMs | number: '1.2-2' }}ms</dd>
-          </div>
-          <div>
-            <dt>passes</dt>
-            <dd>{{ stat.pass }}</dd>
-          </div>
-        </dl>
-      }
-    </section>
+        <fieldset>
+          <legend>options</legend>
+          <label>
+            <input
+              type="checkbox"
+              [checked]="contentVisibility()"
+              (change)="contentVisibility.set($any($event.target).checked)"
+            />
+            contentVisibility
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              [checked]="transitions()"
+              (change)="transitions.set($any($event.target).checked)"
+            />
+            position transitions
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              [checked]="animate()"
+              (change)="animate.set($any($event.target).checked)"
+            />
+            entry animation
+          </label>
+        </fieldset>
 
-    <masonry-grid [options]="options()" (layoutComplete)="stats.set($event)">
-      @for (tile of tiles(); track tile.id) {
-        <div masonryGridItem class="tile" [style.--hue]="tile.hue" [style.height.px]="tile.height">
-          {{ tile.id }}
-        </div>
-      }
-    </masonry-grid>
+        @if (stats(); as stat) {
+          <dl class="stats">
+            <div>
+              <dt>columns</dt>
+              <dd>{{ stat.columns }}</dd>
+            </div>
+            <div>
+              <dt>items</dt>
+              <dd>{{ stat.itemCount }}</dd>
+            </div>
+            <div>
+              <dt>height</dt>
+              <dd>{{ stat.height | number: '1.0-0' }}px</dd>
+            </div>
+            <div>
+              <dt>last pass</dt>
+              <dd>{{ stat.durationMs | number: '1.2-2' }}ms</dd>
+            </div>
+            <div>
+              <dt>passes</dt>
+              <dd>{{ stat.pass }}</dd>
+            </div>
+          </dl>
+        }
+      </section>
+
+      <masonry-grid preview [options]="options()" (layoutComplete)="stats.set($event)">
+        @for (tile of tiles(); track tile.id) {
+          <div
+            masonryGridItem
+            class="tile"
+            [style.--hue]="tile.hue"
+            [style.height.px]="tile.height"
+          >
+            {{ tile.id }}
+          </div>
+        }
+      </masonry-grid>
+    </demo-example>
   `,
 })
 export class PerformanceExample {
+  readonly code = `<!-- contentVisibility lets the browser skip rendering
+     off-screen items; the grid supplies a measured
+     contain-intrinsic-size so scrollbars stay honest. -->
+<masonry-grid
+  columnWidth="180"
+  gutter="12"
+  [options]="{ contentVisibility: true, entryAnimation: false }"
+  (layoutComplete)="stats.set($event)"
+>
+  @for (card of cards(); track card.id) {
+    <article masonryGridItem [style.height.px]="card.height">{{ card.title }}</article>
+  }
+</masonry-grid>`;
+
   readonly count = signal(600);
   readonly contentVisibility = signal(true);
   readonly transitions = signal(true);
