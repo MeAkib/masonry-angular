@@ -1,6 +1,13 @@
 # masonry-angular — workspace
 
+[![npm](https://img.shields.io/npm/v/masonry-angular.svg)](https://www.npmjs.com/package/masonry-angular)
+[![license](https://img.shields.io/npm/l/masonry-angular.svg)](LICENSE)
+
 Angular workspace for the **masonry-angular** library and its example app.
+
+**[npm](https://www.npmjs.com/package/masonry-angular)** ·
+**[GitHub](https://github.com/MeAkib/masonry-angular)** ·
+**[StackBlitz](https://stackblitz.com/github/MeAkib/masonry-angular/tree/main/examples/stackblitz)**
 
 | Project | Path | |
 | --- | --- | --- |
