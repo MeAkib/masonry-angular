@@ -49,3 +49,31 @@ nav a.active {
 main {
   padding: 20px 10px;
 }
+
+.masthead .links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 0.85rem;
+}
+
+.masthead .links a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.masthead .links a:hover {
+  border-bottom-color: currentcolor;
+}
+
+.masthead .links code {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
