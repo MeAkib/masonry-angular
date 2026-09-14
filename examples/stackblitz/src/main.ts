@@ -22,11 +22,36 @@ interface Photo {
 /** Deterministic sizes, so the grid looks the same every time it boots. */
 const HEIGHTS = [300, 520, 260, 440, 310, 580, 350, 420, 280, 500, 330, 460];
 
+/**
+ * A generated image, as a data URI.
+ *
+ * Deliberately not a photo service. An external image host makes the example
+ * depend on someone else's uptime, rate limits and CORS policy — and when it is
+ * slow, the very first thing a visitor sees is an empty grid. These render
+ * instantly, work offline, and still exercise the decode path the grid waits on.
+ */
+function artwork(id: number, width: number, height: number): string {
+  const hue = (id * 47) % 360;
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">` +
+    `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
+    `<stop offset="0" stop-color="hsl(${hue} 70% 62%)"/>` +
+    `<stop offset="1" stop-color="hsl(${(hue + 60) % 360} 70% 44%)"/>` +
+    `</linearGradient></defs>` +
+    `<rect width="${width}" height="${height}" fill="url(#g)"/>` +
+    `<circle cx="${width * 0.75}" cy="${height * 0.27}" r="${width * 0.12}" ` +
+    `fill="hsl(${hue} 90% 88%)" opacity="0.45"/>` +
+    `<circle cx="${width * 0.22}" cy="${height * 0.75}" r="${width * 0.08}" ` +
+    `fill="hsl(${(hue + 180) % 360} 90% 90%)" opacity="0.35"/>` +
+    `</svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 function makePhoto(id: number): Photo {
   const height = HEIGHTS[id % HEIGHTS.length];
   return {
     id,
-    url: `https://picsum.photos/seed/masonry-${id}/400/${height}`,
+    url: artwork(id, 400, height),
     title: `Photo ${id}`,
     width: 400,
     height,

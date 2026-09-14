@@ -1,5 +1,6 @@
 import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { DemoExample } from '../example-frame';
 import { NG_MASONRY_GRID, type MasonryGridOptions, type MasonryLayoutEvent } from 'masonry-angular';
 
 import { artwork, makeCards, type DemoCard } from './cards';
@@ -12,111 +13,136 @@ type SizingMode = 'breakpoints' | 'fixed' | 'columnWidth';
  */
 @Component({
   selector: 'gallery-example',
-  imports: [NG_MASONRY_GRID, DecimalPipe],
+  imports: [NG_MASONRY_GRID, DecimalPipe, DemoExample],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <p class="lede">
-      Column count follows the container width through a breakpoint map —
-      <code>&#123; xs: 1, sm: 2, md: 3, xl: 4, '2xl': 5 &#125;</code>, named against the default
-      scale, and matched against this panel rather than the viewport. Cards with images are held
-      back until <code>decode()</code> resolves, so they never land at the wrong height and shove
-      their neighbours around.
-    </p>
+    <demo-example [code]="code">
+      <p class="lede" lede>
+        Column count follows the container width through a breakpoint map —
+        <code>&#123; xs: 1, sm: 2, md: 3, xl: 4, '2xl': 5 &#125;</code>, named against the default
+        scale, and matched against this panel rather than the viewport. Cards with images are held
+        back until <code>decode()</code> resolves, so they never land at the wrong height and shove
+        their neighbours around.
+      </p>
 
-    <section class="controls">
-      <fieldset>
-        <legend>sizing</legend>
-        <label>
+      <section class="controls" config>
+        <fieldset>
+          <legend>sizing</legend>
+          <label>
+            <input
+              type="radio"
+              name="sizing"
+              [checked]="sizing() === 'breakpoints'"
+              (change)="sizing.set('breakpoints')"
+            />
+            breakpoints
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="sizing"
+              [checked]="sizing() === 'fixed'"
+              (change)="sizing.set('fixed')"
+            />
+            3 columns
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="sizing"
+              [checked]="sizing() === 'columnWidth'"
+              (change)="sizing.set('columnWidth')"
+            />
+            260px columns
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>gutter — {{ gutter() }}px</legend>
           <input
-            type="radio"
-            name="sizing"
-            [checked]="sizing() === 'breakpoints'"
-            (change)="sizing.set('breakpoints')"
+            type="range"
+            min="0"
+            max="48"
+            [value]="gutter()"
+            (input)="gutter.set(+$any($event.target).value)"
           />
-          breakpoints
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="sizing"
-            [checked]="sizing() === 'fixed'"
-            (change)="sizing.set('fixed')"
-          />
-          3 columns
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="sizing"
-            [checked]="sizing() === 'columnWidth'"
-            (change)="sizing.set('columnWidth')"
-          />
-          260px columns
-        </label>
-      </fieldset>
+        </fieldset>
 
-      <fieldset>
-        <legend>gutter — {{ gutter() }}px</legend>
-        <input
-          type="range"
-          min="0"
-          max="48"
-          [value]="gutter()"
-          (input)="gutter.set(+$any($event.target).value)"
-        />
-      </fieldset>
+        <fieldset>
+          <legend>entry animation</legend>
+          <label>
+            <input
+              type="checkbox"
+              [checked]="animate()"
+              (change)="animate.set($any($event.target).checked)"
+            />
+            enabled
+          </label>
+          <button type="button" (click)="reload()">replay</button>
+        </fieldset>
 
-      <fieldset>
-        <legend>entry animation</legend>
-        <label>
-          <input
-            type="checkbox"
-            [checked]="animate()"
-            (change)="animate.set($any($event.target).checked)"
-          />
-          enabled
-        </label>
-        <button type="button" (click)="reload()">replay</button>
-      </fieldset>
+        @if (stats(); as stat) {
+          <dl class="stats">
+            <div>
+              <dt>columns</dt>
+              <dd>{{ stat.columns }}</dd>
+            </div>
+            <div>
+              <dt>column width</dt>
+              <dd>{{ stat.columnWidth | number: '1.0-0' }}px</dd>
+            </div>
+            <div>
+              <dt>items</dt>
+              <dd>{{ stat.itemCount }}</dd>
+            </div>
+            <div>
+              <dt>pass</dt>
+              <dd>{{ stat.durationMs | number: '1.2-2' }}ms</dd>
+            </div>
+          </dl>
+        }
+      </section>
 
-      @if (stats(); as stat) {
-        <dl class="stats">
-          <div>
-            <dt>columns</dt>
-            <dd>{{ stat.columns }}</dd>
-          </div>
-          <div>
-            <dt>column width</dt>
-            <dd>{{ stat.columnWidth | number: '1.0-0' }}px</dd>
-          </div>
-          <div>
-            <dt>items</dt>
-            <dd>{{ stat.itemCount }}</dd>
-          </div>
-          <div>
-            <dt>pass</dt>
-            <dd>{{ stat.durationMs | number: '1.2-2' }}ms</dd>
-          </div>
-        </dl>
-      }
-    </section>
-
-    <masonry-grid [options]="options()" (layoutComplete)="stats.set($event)">
-      @for (card of cards(); track card.id) {
-        <article masonryGridItem class="card" [style.--hue]="card.hue">
-          @if (card.image) {
-            <img [src]="artwork(card.hue)" width="400" height="260" [alt]="card.title" />
-          }
-          <div class="card-body" [style.min-height.px]="card.height">
-            <h2>{{ card.title }}</h2>
-            <p>{{ card.body }}</p>
-          </div>
-        </article>
-      }
-    </masonry-grid>
+      <masonry-grid preview [options]="options()" (layoutComplete)="stats.set($event)">
+        @for (card of cards(); track card.id) {
+          <article masonryGridItem class="card" [style.--hue]="card.hue">
+            @if (card.image) {
+              <img [src]="artwork(card.hue)" width="400" height="260" [alt]="card.title" />
+            }
+            <div class="card-body" [style.min-height.px]="card.height">
+              <h2>{{ card.title }}</h2>
+              <p>{{ card.body }}</p>
+            </div>
+          </article>
+        }
+      </masonry-grid>
+    </demo-example>
   `,
 })
 export class GalleryExample {
+  readonly code = `<!-- Responsive by breakpoint, matched against the container. -->
+<masonry-grid [options]="options()" (layoutComplete)="stats.set($event)">
+  @for (card of cards(); track card.id) {
+    <article masonryGridItem class="card">
+      @if (card.image) {
+        <!-- width/height reserve the space so the grid never jumps -->
+        <img [src]="artwork(card.hue)" width="400" height="260" [alt]="card.title" />
+      }
+      <div class="card-body">
+        <h2>{{ card.title }}</h2>
+        <p>{{ card.body }}</p>
+      </div>
+    </article>
+  }
+</masonry-grid>
+
+<!-- options() -->
+{
+  columns: { xs: 1, sm: 2, md: 3, xl: 4, '2xl': 5 },
+  gutter: 16,
+  entryAnimation: {},
+}`;
+
   readonly cards = signal<DemoCard[]>(makeCards(24));
   readonly sizing = signal<SizingMode>('breakpoints');
   readonly gutter = signal(16);
