@@ -19,7 +19,11 @@ const OPTIONS: MasonryGridOptions = {
   imports: [NG_MASONRY_GRID, DemoExample],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <demo-example [code]="code">
+    <demo-example
+      heading="Dynamic items"
+      summary="Add, prepend, remove and shuffle. There is nothing to call afterwards."
+      [code]="code"
+    >
       <p class="lede" lede>
         Every button below mutates the source array and nothing else. Item order is derived from the
         DOM at layout time, so a prepend really lands first — the ordering bug that makes other

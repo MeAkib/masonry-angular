@@ -1,23 +1,56 @@
+/*
+ * Demo styling.
+ *
+ * Everything here is hand-written and dependency-free, to match the library it
+ * is showing. Values come from the scales below rather than being picked per
+ * component, which is what keeps a page this dense from looking accidental.
+ */
+
 :root {
-  --bg: #f7f7f8;
+  /* Spacing — a 4px base, skipping sizes rather than inventing new ones. */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 10px;
+  --s4: 14px;
+  --s5: 20px;
+  --s6: 28px;
+  --s7: 40px;
+
+  --r1: 8px;
+  --r2: 12px;
+  --r3: 16px;
+
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Light. `--sunken` sits *behind* panels; `--panel` is what floats. */
+  --bg: #fafaf9;
+  --sunken: #f1f1ef;
   --panel: #ffffff;
-  --line: #e2e2e6;
-  --text: #1b1b20;
-  --muted: #6b6b76;
+  --line: #e4e4e0;
+  --line-strong: #d2d2cc;
+  --text: #1a1a17;
+  --muted: #6d6d66;
   --accent: #5b5bd6;
-  --btn: #f2f2f5;
+  --accent-soft: #eeeefc;
+  --shadow: 0 1px 2px rgb(20 20 15 / 0.06), 0 1px 1px rgb(20 20 15 / 0.04);
+  --shadow-lift: 0 4px 14px rgb(20 20 15 / 0.08);
+
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #16161a;
-    --panel: #1e1e24;
-    --line: #2e2e37;
-    --text: #ececf1;
-    --muted: #9a9aa8;
-    --accent: #8f8ff0;
-    --btn: #26262e;
+    --bg: #131316;
+    --sunken: #18181c;
+    --panel: #1d1d22;
+    --line: #2b2b33;
+    --line-strong: #3a3a45;
+    --text: #ececed;
+    --muted: #9c9ca8;
+    --accent: #9d9dfa;
+    --accent-soft: #23233a;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-lift: 0 4px 16px rgb(0 0 0 / 0.45);
   }
 }
 
@@ -34,8 +67,12 @@ body {
     system-ui,
     -apple-system,
     'Segoe UI',
+    Roboto,
     sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 h1,
@@ -44,114 +81,158 @@ h3 {
   letter-spacing: -0.02em;
 }
 
+code {
+  font-family: var(--mono);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* ---- Shared example chrome ------------------------------------------------ */
 
+/*
+ * The long-form explanation, shown only when the notes panel is open. It is
+ * prose, so it gets a measure — past about 70 characters a line is tiring to
+ * track back from.
+ */
 .lede {
-  /* max-width: 68ch; */
-  margin: 0 0 22px;
+  max-width: 70ch;
+  margin: 0 0 var(--s4);
   color: var(--muted);
-  line-height: 1.6;
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.lede:last-child {
+  margin-bottom: 0;
 }
 
 .lede code {
   padding: 1px 5px;
   border-radius: 5px;
-  background: var(--btn);
-  font-size: 0.88em;
+  background: var(--sunken);
+  color: var(--text);
+  font-size: 0.86em;
 }
 
 .controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
-  margin-bottom: 26px;
+  gap: var(--s3);
 }
 
 .controls fieldset {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--s3);
   align-items: center;
   margin: 0;
-  padding: 10px 14px 12px;
+  padding: var(--s2) var(--s4) var(--s3);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--r2);
   background: var(--panel);
+  box-shadow: var(--shadow);
 }
 
 .controls legend {
-  padding: 0 6px;
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  padding: 0 var(--s1);
   color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .controls label {
   display: inline-flex;
-  gap: 6px;
+  gap: var(--s1);
   align-items: center;
   font-size: 0.85rem;
   cursor: pointer;
 }
 
 button {
-  padding: 5px 11px;
+  padding: 5px var(--s3);
   border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--btn);
+  border-radius: var(--r1);
+  background: var(--panel);
   color: inherit;
   font: inherit;
   font-size: 0.82rem;
   cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    color 0.12s ease;
 }
 
 button:hover {
-  border-color: var(--accent);
+  border-color: var(--line-strong);
+  color: var(--accent);
 }
 
 input[type='range'] {
-  width: 150px;
+  width: 140px;
+  accent-color: var(--accent);
+}
+
+input[type='checkbox'],
+input[type='radio'] {
   accent-color: var(--accent);
 }
 
 .stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 22px;
+  gap: var(--s6);
   margin: 0;
-  padding: 12px 18px;
+  padding: var(--s3) var(--s5);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--r2);
   background: var(--panel);
+  box-shadow: var(--shadow);
 }
 
 .stats div {
   display: grid;
-  gap: 2px;
+  gap: 1px;
 }
 
 .stats dt {
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
   color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .stats dd {
   margin: 0;
+  font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: 640;
 }
 
-/* ---- Shared item styling -------------------------------------------------- */
+/* ---- Cards ---------------------------------------------------------------- */
 
+/*
+ * The hue is per-card sample data, not meaning, so it is kept to the badge and
+ * the artwork. An earlier version put a coloured stripe on every card, which
+ * read as a status indicator for a status that did not exist.
+ */
 .card {
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--r2);
   background: var(--panel);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.16s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lift);
 }
 
 .card img {
@@ -163,49 +244,51 @@ input[type='range'] {
 .card-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px 16px;
-  border-top: 3px solid hsl(var(--hue) 70% 55%);
+  gap: var(--s1);
+  padding: var(--s4) var(--s4) var(--s5);
 }
 
 .card h2 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+  font-weight: 620;
 }
 
 .card p {
   margin: 0;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   line-height: 1.5;
 }
 
 .badge {
   align-self: flex-start;
-  margin-top: auto;
-  padding: 2px 8px;
+  margin-top: var(--s2);
+  padding: 2px var(--s2);
   border-radius: 999px;
-  background: hsl(var(--hue) 70% 55% / 0.18);
-  color: hsl(var(--hue) 70% 42%);
-  font-size: 0.7rem;
-  font-weight: 600;
+  background: hsl(var(--hue) 62% 52% / 0.14);
+  color: hsl(var(--hue) 62% 34%);
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
 }
 
 @media (prefers-color-scheme: dark) {
   .badge {
-    color: hsl(var(--hue) 80% 74%);
+    background: hsl(var(--hue) 62% 60% / 0.18);
+    color: hsl(var(--hue) 75% 76%);
   }
 }
 
 .tile {
   display: grid;
   place-items: center;
-  border-radius: 10px;
-  background: hsl(var(--hue) 55% 55% / 0.22);
-  border: 1px solid hsl(var(--hue) 55% 55% / 0.4);
+  border: 1px solid hsl(var(--hue) 50% 55% / 0.34);
+  border-radius: var(--r1);
+  background: hsl(var(--hue) 50% 55% / 0.16);
   color: var(--muted);
+  font-family: var(--mono);
   font-size: 0.72rem;
-  font-variant-numeric: tabular-nums;
 }
 
 /* Stamps are positioned by the author; the grid only measures where they land. */
@@ -215,12 +298,12 @@ input[type='range'] {
   right: 0;
   z-index: 1;
   display: grid;
-  gap: 6px;
+  gap: var(--s1);
   width: min(320px, 60%);
-  padding: 18px;
+  padding: var(--s5);
   border: 1px dashed var(--accent);
-  border-radius: 12px;
-  background: var(--panel);
+  border-radius: var(--r2);
+  background: var(--accent-soft);
   font-size: 0.85rem;
 }
 
@@ -237,32 +320,45 @@ input[type='range'] {
 .widget {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--s2);
   overflow: hidden;
-  padding: 13px 15px 15px;
+  padding: var(--s4);
   border: 1px solid var(--line);
-  border-left: 3px solid hsl(var(--hue) 65% 55%);
-  border-radius: 12px;
+  border-radius: var(--r2);
   background: var(--panel);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  box-shadow: var(--shadow);
 }
 
 .widget header {
   display: flex;
-  gap: 10px;
+  gap: var(--s2);
   align-items: baseline;
   justify-content: space-between;
 }
 
 .widget h2 {
+  display: flex;
+  gap: var(--s2);
+  align-items: center;
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 620;
+}
+
+/* A dot rather than a border stripe: same colour coding, a tenth of the weight. */
+.widget h2::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: hsl(var(--hue) 60% 55%);
+  flex: none;
 }
 
 .widget .dims {
   color: var(--muted);
-  font-size: 0.66rem;
-  font-variant-numeric: tabular-nums;
+  font-family: var(--mono);
+  font-size: 0.64rem;
   white-space: nowrap;
 }
 
@@ -271,24 +367,25 @@ input[type='range'] {
   flex: 1;
   flex-direction: column;
   justify-content: center;
-  gap: 2px;
+  gap: 1px;
 }
 
 .kpi b {
-  font-size: 1.75rem;
-  font-weight: 650;
-  letter-spacing: -0.02em;
+  font-size: 1.8rem;
+  font-weight: 640;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
+  line-height: 1.15;
 }
 
 .kpi .delta {
-  color: #1a7f4b;
+  color: #14794a;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 640;
 }
 
 .kpi .delta.down {
-  color: #c2382c;
+  color: #bd3126;
 }
 
 .kpi .delta small {
@@ -298,33 +395,39 @@ input[type='range'] {
 
 @media (prefers-color-scheme: dark) {
   .kpi .delta {
-    color: #55c98d;
+    color: #4fcd8e;
   }
 
   .kpi .delta.down {
-    color: #f0776a;
+    color: #f28376;
   }
 }
 
 .bars {
   display: flex;
   flex: 1;
-  gap: 4px;
+  gap: 3px;
   align-items: flex-end;
   min-height: 0;
+  padding-top: var(--s2);
 }
 
 .bars i {
   flex: 1;
-  border-radius: 3px 3px 0 0;
-  background: hsl(var(--hue) 65% 55% / 0.5);
+  min-width: 0;
+  border-radius: 3px 3px 1px 1px;
+  background: linear-gradient(
+    180deg,
+    hsl(var(--hue) 60% 58% / 0.85),
+    hsl(var(--hue) 60% 58% / 0.4)
+  );
 }
 
 .widget ul {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 7px;
+  gap: var(--s2);
   overflow: hidden;
   margin: 0;
   padding: 0;
@@ -334,7 +437,7 @@ input[type='range'] {
 
 .widget li {
   display: flex;
-  gap: 10px;
+  gap: var(--s3);
   justify-content: space-between;
   color: var(--muted);
 }
@@ -342,6 +445,7 @@ input[type='range'] {
 .widget li b {
   color: var(--text);
   font-variant-numeric: tabular-nums;
+  font-weight: 620;
 }
 
 /* The deferred body fills the tile the author already sized. */
@@ -356,18 +460,18 @@ input[type='range'] {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 9px;
+  gap: var(--s2);
   justify-content: center;
 }
 
 .skeleton span {
-  height: 10px;
+  height: 9px;
   border-radius: 999px;
   background: linear-gradient(
     90deg,
-    hsl(var(--hue) 45% 58% / 0.14),
-    hsl(var(--hue) 45% 58% / 0.34),
-    hsl(var(--hue) 45% 58% / 0.14)
+    hsl(var(--hue) 40% 58% / 0.12),
+    hsl(var(--hue) 40% 58% / 0.3),
+    hsl(var(--hue) 40% 58% / 0.12)
   );
   background-size: 220% 100%;
   animation: skeleton-shimmer 1.5s ease-in-out infinite;
@@ -397,5 +501,9 @@ input[type='range'] {
 @media (prefers-reduced-motion: reduce) {
   .skeleton span {
     animation: none;
+  }
+
+  * {
+    transition-duration: 0.01ms !important;
   }
 }

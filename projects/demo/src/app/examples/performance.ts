@@ -26,7 +26,11 @@ function makeTiles(count: number): Tile[] {
   imports: [NG_MASONRY_GRID, DecimalPipe, DemoExample],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <demo-example [code]="code">
+    <demo-example
+      heading="Performance"
+      summary="Six hundred items with content-visibility, and the measured cost of every pass."
+      [code]="code"
+    >
       <p class="lede" lede>
         Solve time is measured across the whole pass — reading measurements, running the solver and
         writing every transform. Sizes arrive pre-computed from one shared

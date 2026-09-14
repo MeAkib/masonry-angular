@@ -13,7 +13,11 @@ import { makeCards, type DemoCard } from './cards';
   imports: [NG_MASONRY_GRID, DemoExample],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <demo-example [code]="code">
+    <demo-example
+      heading="Spans & stamps"
+      summary="Items that take two columns, and a pinned region the grid routes everything else around."
+      [code]="code"
+    >
       <p class="lede" lede>
         <code>masonryColSpan</code> widens an item across whole columns; the solver drops it into
         the group of columns with the lowest shared top edge. A
