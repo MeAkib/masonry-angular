@@ -6,6 +6,10 @@
     "outDir": "../../out-tsc/lib",
     "declaration": true,
     "declarationMap": true,
+    /* Inline any TypeScript helper instead of importing it from tslib: a library
+       that claims no dependencies must not grow one when some syntax needs a
+       helper. scripts/verify-deps.mjs checks the built output. */
+    "importHelpers": false,
     "types": []
   },
   "include": ["src/**/*.ts", "testing/**/*.ts"],

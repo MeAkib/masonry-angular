@@ -38,6 +38,11 @@ jobs:
       - name: Build the library
         run: npm run build:lib
 
+      # 'Zero dependencies' is checkable in ten seconds on Bundlephobia,
+      # so it has to be exactly true. 0.0.2 shipped declaring tslib.
+      - name: No runtime dependencies
+        run: node scripts/verify-deps.mjs
+
       # Also exercises the command Vercel runs, and the llms.txt sync step.
       - name: Build the demo
         run: npm run build

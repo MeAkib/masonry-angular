@@ -7,7 +7,7 @@
     "prebuild": "node scripts/sync-llms.mjs",
     "start": "npm run build:lib && ng serve demo",
     "build": "npm run build:lib && ng build demo",
-    "build:lib": "ng build masonry-angular",
+    "build:lib": "ng build masonry-angular && node scripts/strip-tslib.mjs",
     "watch:lib": "ng build masonry-angular --watch",
     "test": "ng test masonry-angular --watch=false",
     "test:watch": "ng test masonry-angular --watch",
@@ -21,7 +21,8 @@
     "verify:ssr": "npm run build:lib && node scripts/verify-ssr.mjs",
     "verify:compat": "node scripts/verify-compat.mjs",
     "verify:docs": "npm run build:lib && node scripts/verify-docs.mjs",
-    "postbuild": "node scripts/inject-meta.mjs"
+    "postbuild": "node scripts/inject-meta.mjs",
+    "verify:deps": "npm run build:lib && node scripts/verify-deps.mjs"
   },
   "packageManager": "npm@11.12.1",
   "engines": {
