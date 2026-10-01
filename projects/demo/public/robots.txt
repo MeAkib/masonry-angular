@@ -1,0 +1,76 @@
+# masonry-angular — https://github.com/MeAkib/masonry-angular
+#
+# Everything on this site is public documentation for an open-source library, so
+# every crawler is welcome, including the ones that collect training data. Being
+# read is the entire point.
+#
+# Each agent is named explicitly rather than left to the wildcard, because
+# several of these are documented as matching their own name first and ignoring
+# `User-agent: *` once a specific block exists.
+#
+# Note that Google-Extended and Applebot-Extended are not crawlers. They are the
+# tokens those companies read to decide whether this content may be used for AI
+# training. Allowing them is deliberate. Remove those two blocks to opt out.
+
+User-agent: *
+Allow: /
+
+# Search
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+# AI training and retrieval
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+# __SITE_URL__ is replaced at build time by scripts/inject-meta.mjs. A Sitemap
+# line has to be an absolute URL; a relative one is ignored.
+Sitemap: __SITE_URL__/sitemap.xml

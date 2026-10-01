@@ -47,6 +47,12 @@ jobs:
       - name: Build the demo
         run: npm run build
 
+      # AI crawlers do not execute JavaScript, so a route that falls back to
+      # client rendering looks finished in a browser and is blank to every
+      # model. Nothing about the site would look wrong if this regressed.
+      - name: Prerendered pages
+        run: npm run verify:prerender
+
       - name: Bundle size
         run: npm run size
 

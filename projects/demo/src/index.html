@@ -10,7 +10,7 @@
 
     <meta
       name="description"
-      content="Zero-dependency masonry layout for Angular. For photo walls and for dashboards where cards have different heights. 8.6 KB, signal-based, zoneless, SSR-safe, Angular 17.1–22."
+      content="Zero-dependency masonry layout for Angular. For photo walls and for dashboards where cards have different heights. Adds 10.4 KB to your bundle, signal-based, zoneless, SSR-safe, Angular 17.1–22."
     />
 
     <!--
@@ -25,7 +25,7 @@
     <meta property="og:title" content="masonry-angular — cascading grid layout for Angular" />
     <meta
       property="og:description"
-      content="Zero dependencies, 8.6 KB, Angular 17–22, SSR-safe. For photo walls and for dashboards that stop leaving gaps."
+      content="Zero dependencies, 10.4 KB added to your bundle, Angular 17–22, SSR-safe. For photo walls and for dashboards that stop leaving gaps."
     />
     <meta property="og:image" content="__SITE_URL__/og.png" />
     <meta property="og:image:width" content="1200" />
@@ -39,11 +39,36 @@
     <meta name="twitter:title" content="masonry-angular — cascading grid layout for Angular" />
     <meta
       name="twitter:description"
-      content="Zero dependencies, 8.6 KB, Angular 17–22, SSR-safe. For photo walls and for dashboards that stop leaving gaps."
+      content="Zero dependencies, 10.4 KB added to your bundle, Angular 17–22, SSR-safe. For photo walls and for dashboards that stop leaving gaps."
     />
     <meta name="twitter:image" content="__SITE_URL__/og.png" />
 
     <link rel="canonical" href="__SITE_URL__/" />
+
+    <!--
+      Structured data. `__SITE_URL__` here is not the self-referencing form the
+      canonical tag uses, so inject-meta.mjs leaves it pointing at the site root
+      on every page — which is correct: the software is one entity, described
+      identically wherever it is mentioned.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareSourceCode",
+        "name": "masonry-angular",
+        "alternateName": "Angular masonry layout",
+        "description": "Cascading grid (masonry) layout for Angular with its own solver. No masonry-layout, no jQuery, no imagesLoaded, no runtime dependencies. For photo galleries and for dashboards where cards have different heights.",
+        "url": "__SITE_URL__/",
+        "codeRepository": "https://github.com/MeAkib/masonry-angular",
+        "programmingLanguage": "TypeScript",
+        "runtimePlatform": "Angular",
+        "license": "https://spdx.org/licenses/MIT.html",
+        "keywords": "angular, masonry, masonry-layout, grid, cascading grid, dashboard, signals, zoneless, ssr",
+        "author": { "@type": "Person", "name": "Akib", "url": "https://github.com/MeAkib" },
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
   </head>
   <body>
     <app-root></app-root>

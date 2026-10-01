@@ -1,5 +1,91 @@
 # Changelog
 
+## 0.0.3 — 2026-10-01
+
+Two corrections and no runtime changes. The layout behaves exactly as it did in `0.0.2`. What this
+release fixes is a dependency the package declared but never used, and a size number that was
+measured in the wrong unit.
+
+### Zero runtime dependencies, for real this time
+
+`0.0.2` declared `tslib` under `dependencies`, so Bundlephobia reported "1 dependency" beside a
+README that said there were none. The code never imported it — the library tsconfig sets
+`importHelpers: false`, so TypeScript inlines whatever helper it needs. ng-packagr adds `tslib` to the
+built `package.json` unconditionally and offers no option to turn that off, which is why leaving it
+out of the source file could not fix it on its own.
+
+- `scripts/strip-tslib.mjs` removes the entry as part of `npm run build:lib`.
+- `npm run verify:deps` makes the claim checkable rather than merely stated. It fails if
+  `package.json` declares anything under `dependencies`, **or** if the built code imports any module
+  that is not a declared peer. So the day a build genuinely does need `tslib`, CI says so instead of
+  consumers finding out.
+- That check runs on every pull request.
+
+### The published size was measured in the wrong unit
+
+Every document said **8.6 KB gzipped**. That is what the library's own code weighs. It is not what
+your application grows by, and a README should quote the second.
+
+Angular libraries are published in *partial* compilation: directive and component definitions are
+placeholders that the Angular linker expands during the consuming application's build. `npm run size`
+bundles the published FESM with esbuild and never runs the linker, so it cannot see that expansion.
+Neither does Bundlephobia — which is why it reports a flat ~10.6 KB for every export in the package,
+including ones that are forty lines of arithmetic.
+
+`npm run size:app` is a new script that measures the thing people actually care about: it builds the
+same application twice, once plain and once with the grid, and subtracts.
+
+| Application                                    | Gzipped JavaScript |
+| ---------------------------------------------- | ------------------ |
+| baseline, no grid                              | 38.79 KB           |
+| `<masonry-grid>` and `[masonryGridItem]`       | 49.16 KB — **+10.37 KB** |
+| all four directives and `provideNgMasonryGrid` | 49.36 KB — +10.57 KB |
+
+The baseline already uses signals, `computed`, `effect`, `input`/`output`, `@for`, `@if`, `OnPush`,
+`afterNextRender`, `NgZone` and `DestroyRef`, so Angular's own cost for those is not charged to the
+grid.
+
+The figure quoted across the README, `llms.txt`, the demo and the package description is therefore
+now **about 10.4 KB added to your bundle**. [`DOCS.md`](projects/masonry-angular/DOCS.md#bundle-size)
+gives all three numbers and says which one to budget against, and keeps the library-comparison table
+in own-code units so that it stays like for like.
+
+The `0.0.1` and `0.0.2` entries below still say 8.6 KB. They are left as written, because they are a
+record of what was published at the time rather than a description of the current release.
+
+### Repository
+
+Not part of the published package, but the reason the gap above was found at all.
+
+- **A CI gate.** `verify`, `ssr`, `native` and `docs` jobs, with a single required `All checks passed`
+  status so a pull request cannot merge while any of them is red. The `native` job now installs
+  Playwright as well as the browser, and fails if the run reports itself skipped — without that it
+  would have passed green forever while testing nothing.
+- **The demo is prerendered.** It was a client-rendered Angular app, so the HTML served to anyone who
+  did not run JavaScript was an empty `<app-root></app-root>`. That is everyone who matters for
+  discovery: GPTBot, ClaudeBot, PerplexityBot and the search-time crawlers download a URL and read the
+  response, and [they do not execute JavaScript](https://vercel.com/blog/the-rise-of-the-ai-crawler).
+  Every page on the site was blank to all of them.
+
+  `outputMode: 'static'` now renders all five routes at build time into plain HTML — no server and no
+  serverless function; Vercel still serves static files. The notes and source panels changed from
+  being removed by control flow to being hidden, because the code listing is the most useful thing on
+  each page to anyone reading the HTML, and it was not in the HTML. Text per page roughly doubled.
+
+  The gallery moved from `/gallery` to `/`. A `redirectTo` route prerenders as a meta-refresh stub
+  with no content and no social tags, so the bare domain — the URL people share — had no preview card
+  at all. `/gallery` now returns a permanent redirect.
+
+  `npm run verify:prerender` fails if a route is missing from the output or ships under 600
+  characters of text, and it runs on every pull request. There is also a `robots.txt` naming the AI
+  crawlers explicitly, and a `sitemap.xml` generated from the pages the build actually produced, so
+  it cannot list a page that does not exist.
+- **The demo is redesigned**, and every example has copy / code / config panels. The dashboard example
+  no longer leaves 452px of empty space at the bottom right.
+- **The workspace `package.json` is renamed** to `masonry-angular-workspace`. It is `private` and
+  never published, but sharing a name with the library made it easy to read the wrong version number
+  out of the wrong file.
+
 ## 0.0.2 — 2026-09-12
 
 **If you are on Angular 17 to 21, this is the release that lets you install the package at

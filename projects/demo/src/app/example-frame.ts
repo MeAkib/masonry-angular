@@ -56,28 +56,37 @@ type Panel = 'none' | 'notes' | 'config' | 'code';
       </div>
     </header>
 
-    @if (panel() === 'notes') {
-      <div class="panel notes">
-        <ng-content select="[lede]" />
-      </div>
-    }
+    <!--
+      The panels are hidden, not removed. A control-flow block kept the notes,
+      the controls and the source out of the DOM entirely, which meant they were
+      also missing from the prerendered HTML — and the source listing is the
+      single most useful thing on this page to a search engine or an AI assistant
+      reading it. Hiding them with the hidden attribute instead ships the text in
+      the response and leaves it one click from visible.
+
+      No backticks in this comment: it sits inside a TypeScript template literal,
+      where one would end the string and produce a page of errors pointing at
+      unrelated files.
+
+      It also fixes a smaller thing: the config controls keep their values when
+      you switch panels, instead of being destroyed and rebuilt at their defaults.
+    -->
+    <div class="panel notes" [hidden]="panel() !== 'notes'">
+      <ng-content select="[lede]" />
+    </div>
 
     <!-- The example supplies its own controls markup, so it keeps the styling it
          already had; this only decides whether it is shown. -->
-    @if (panel() === 'config') {
-      <div class="panel">
-        <ng-content select="[config]" />
-      </div>
-    }
+    <div class="panel" [hidden]="panel() !== 'config'">
+      <ng-content select="[config]" />
+    </div>
 
-    @if (panel() === 'code') {
-      <div class="panel code-panel">
-        <button type="button" class="copy" (click)="copy()">
-          {{ copied() ? 'Copied' : 'Copy' }}
-        </button>
-        <pre class="code"><code>{{ code() }}</code></pre>
-      </div>
-    }
+    <div class="panel code-panel" [hidden]="panel() !== 'code'">
+      <button type="button" class="copy" (click)="copy()">
+        {{ copied() ? 'Copied' : 'Copy' }}
+      </button>
+      <pre class="code"><code>{{ code() }}</code></pre>
+    </div>
 
     <ng-content select="[preview]" />
   `,
@@ -147,6 +156,13 @@ type Panel = 'none' | 'notes' | 'config' | 'code';
 
     .panel {
       margin-bottom: var(--s5);
+    }
+
+    /* The hidden attribute loses to any display declaration, so state it here
+       rather than relying on the browser default surviving a future edit.
+       (No backticks in this comment: it is inside a template literal.) */
+    .panel[hidden] {
+      display: none;
     }
 
     .notes {

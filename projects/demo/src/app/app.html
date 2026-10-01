@@ -17,7 +17,12 @@
 
     <nav aria-label="examples">
       @for (example of examples; track example.path) {
-        <a [routerLink]="example.path" routerLinkActive="active">{{ example.label }}</a>
+        <a
+          [routerLink]="example.path"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: example.path === '' }"
+          >{{ example.label }}</a
+        >
       }
     </nav>
 
@@ -37,7 +42,8 @@
 
 <footer class="shell">
   <p>
-    Zero-dependency masonry layout for Angular 17.1–22 — 8.6 KB, signal-based, zoneless, SSR-safe.
+    Zero-dependency masonry layout for Angular 17.1-22 — 10.4 KB added to your bundle, signal-based,
+    zoneless, SSR-safe.
   </p>
   <p>
     <a href="https://github.com/MeAkib/masonry-angular" target="_blank" rel="noopener">Source</a>

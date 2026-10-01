@@ -1,5 +1,5 @@
 {
-  "name": "masonry-angular",
+  "name": "masonry-angular-workspace",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -17,11 +17,13 @@
     "release": "npm test && npm run build:lib && npm publish ./dist/masonry-angular",
     "size": "npm run build:lib && node scripts/bundle-size.mjs",
     "verify:native": "node scripts/verify-native.mjs",
+    "verify:prerender": "node scripts/verify-prerender.mjs",
     "size:features": "npm run build:lib && node scripts/feature-size.mjs",
+    "size:app": "npm run build:lib && node scripts/app-size.mjs",
     "verify:ssr": "npm run build:lib && node scripts/verify-ssr.mjs",
     "verify:compat": "node scripts/verify-compat.mjs",
     "verify:docs": "npm run build:lib && node scripts/verify-docs.mjs",
-    "postbuild": "node scripts/inject-meta.mjs",
+    "postbuild": "node scripts/make-sitemap.mjs && node scripts/inject-meta.mjs",
     "verify:deps": "npm run build:lib && node scripts/verify-deps.mjs"
   },
   "packageManager": "npm@11.12.1",
@@ -43,6 +45,7 @@
     "@angular/cli": "^22.0.5",
     "@angular/compiler-cli": "^22.0.0",
     "@angular/platform-server": "^22.1.5",
+    "@angular/ssr": "~22.1.0",
     "jsdom": "^28.0.0",
     "ng-packagr": "^22.1.0",
     "prettier": "^3.8.1",
