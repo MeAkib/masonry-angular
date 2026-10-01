@@ -27,6 +27,13 @@ jobs:
         with:
           node-version: 24
           cache: npm
+
+      # Before installing, not after: when package.json and package-lock.json
+      # disagree, `npm ci` fails with EUSAGE and every job dies before anything
+      # is tested. This says which dependency, and what to run.
+      - name: Lock file is in sync
+        run: node scripts/verify-lockfile.mjs
+
       - run: npm ci
 
       - name: Formatting

@@ -5,6 +5,7 @@
 
 Angular workspace for the **masonry-angular** library and its example app.
 
+**[Live demo](https://masonry-angular.vercel.app)** ·
 **[npm](https://www.npmjs.com/package/masonry-angular)** ·
 **[GitHub](https://github.com/MeAkib/masonry-angular)** ·
 **[StackBlitz](https://stackblitz.com/github/MeAkib/masonry-angular/tree/main/examples/stackblitz)**
@@ -35,7 +36,7 @@ working on both.
 | | |
 | --- | --- |
 | [Open in StackBlitz](https://stackblitz.com/github/MeAkib/masonry-angular/tree/main/examples/stackblitz) | A minimal grid, installing `masonry-angular` from npm. Boots in the browser, nothing to set up. |
-| Demo app | The five examples in `projects/demo`, deployed to Vercel. <!-- add the URL after the first deploy --> |
+| [Demo app](https://masonry-angular.vercel.app) | The five examples in `projects/demo`, prerendered and deployed to Vercel. |
 
 ### Deploying
 

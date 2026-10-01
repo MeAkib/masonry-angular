@@ -1,0 +1,41 @@
+#!/bin/sh
+#
+# Runs before every push: the checks that must never be red on a branch someone
+# else can see. Around half a minute.
+#
+# This is deliberately not the whole of CI. Server rendering, the prerendered
+# pages, the documentation examples, native CSS masonry and the Angular version
+# matrix all need a browser or several full builds, and a hook that takes four
+# minutes gets bypassed. Those stay in CI, where waiting costs nobody anything.
+#
+# What is here is the set that catches an ordinary mistake:
+#
+#   lock file   — otherwise `npm ci` refuses and every job dies before testing
+#   tests       — 185 of them, under three seconds
+#   build       — the library has to compile at all
+#   zero deps   — the claim on the README, checkable in ten seconds by a stranger
+#
+# To skip deliberately:  git push --no-verify
+
+set -e
+
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+
+echo "pre-push: lock file"
+node scripts/verify-lockfile.mjs
+
+echo
+echo "pre-push: unit tests"
+npm test
+
+echo
+echo "pre-push: library build"
+npm run build:lib >/dev/null
+
+echo
+echo "pre-push: no runtime dependencies"
+node scripts/verify-deps.mjs
+
+echo
+echo "pre-push: ok"
