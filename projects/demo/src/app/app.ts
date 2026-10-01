@@ -10,7 +10,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 })
 export class App {
   readonly examples = [
-    { path: 'gallery', label: 'Gallery' },
+    { path: '', label: 'Gallery' },
     { path: 'spans', label: 'Spans & stamps' },
     { path: 'dashboard', label: 'Dashboard' },
     { path: 'dynamic', label: 'Dynamic items' },

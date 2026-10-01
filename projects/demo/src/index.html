@@ -44,6 +44,31 @@
     <meta name="twitter:image" content="__SITE_URL__/og.png" />
 
     <link rel="canonical" href="__SITE_URL__/" />
+
+    <!--
+      Structured data. `__SITE_URL__` here is not the self-referencing form the
+      canonical tag uses, so inject-meta.mjs leaves it pointing at the site root
+      on every page — which is correct: the software is one entity, described
+      identically wherever it is mentioned.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareSourceCode",
+        "name": "masonry-angular",
+        "alternateName": "Angular masonry layout",
+        "description": "Cascading grid (masonry) layout for Angular with its own solver. No masonry-layout, no jQuery, no imagesLoaded, no runtime dependencies. For photo galleries and for dashboards where cards have different heights.",
+        "url": "__SITE_URL__/",
+        "codeRepository": "https://github.com/MeAkib/masonry-angular",
+        "programmingLanguage": "TypeScript",
+        "runtimePlatform": "Angular",
+        "license": "https://spdx.org/licenses/MIT.html",
+        "keywords": "angular, masonry, masonry-layout, grid, cascading grid, dashboard, signals, zoneless, ssr",
+        "author": { "@type": "Person", "name": "Akib", "url": "https://github.com/MeAkib" },
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
   </head>
   <body>
     <app-root></app-root>

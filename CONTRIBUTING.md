@@ -170,6 +170,7 @@ Tests, unlike the demo, run against the sources directly, so `npm test` needs no
 | `npm run verify:ssr`  | Render on a real server with no browser globals (see [Testing](#testing)).                 |
 | `npm run size:features` | Measure what each feature costs, by ablation.                                             |
 | `npm run size:app`    | Build an app with and without the grid, and subtract. The number to quote.                  |
+| `npm run verify:prerender` | Every route ships its text as HTML, and the sitemap matches.                          |
 | `npm run ng`          | The raw Angular CLI, for anything the scripts above do not cover.                          |
 
 Three numbers worth knowing, all produced by scripts above rather than estimated: the library's own

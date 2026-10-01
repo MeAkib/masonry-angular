@@ -17,7 +17,12 @@
 
     <nav aria-label="examples">
       @for (example of examples; track example.path) {
-        <a [routerLink]="example.path" routerLinkActive="active">{{ example.label }}</a>
+        <a
+          [routerLink]="example.path"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: example.path === '' }"
+          >{{ example.label }}</a
+        >
       }
     </nav>
 

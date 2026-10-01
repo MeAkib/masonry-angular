@@ -61,6 +61,25 @@ Not part of the published package, but the reason the gap above was found at all
   status so a pull request cannot merge while any of them is red. The `native` job now installs
   Playwright as well as the browser, and fails if the run reports itself skipped — without that it
   would have passed green forever while testing nothing.
+- **The demo is prerendered.** It was a client-rendered Angular app, so the HTML served to anyone who
+  did not run JavaScript was an empty `<app-root></app-root>`. That is everyone who matters for
+  discovery: GPTBot, ClaudeBot, PerplexityBot and the search-time crawlers download a URL and read the
+  response, and [they do not execute JavaScript](https://vercel.com/blog/the-rise-of-the-ai-crawler).
+  Every page on the site was blank to all of them.
+
+  `outputMode: 'static'` now renders all five routes at build time into plain HTML — no server and no
+  serverless function; Vercel still serves static files. The notes and source panels changed from
+  being removed by control flow to being hidden, because the code listing is the most useful thing on
+  each page to anyone reading the HTML, and it was not in the HTML. Text per page roughly doubled.
+
+  The gallery moved from `/gallery` to `/`. A `redirectTo` route prerenders as a meta-refresh stub
+  with no content and no social tags, so the bare domain — the URL people share — had no preview card
+  at all. `/gallery` now returns a permanent redirect.
+
+  `npm run verify:prerender` fails if a route is missing from the output or ships under 600
+  characters of text, and it runs on every pull request. There is also a `robots.txt` naming the AI
+  crawlers explicitly, and a `sitemap.xml` generated from the pages the build actually produced, so
+  it cannot list a page that does not exist.
 - **The demo is redesigned**, and every example has copy / code / config panels. The dashboard example
   no longer leaves 452px of empty space at the bottom right.
 - **The workspace `package.json` is renamed** to `masonry-angular-workspace`. It is `private` and

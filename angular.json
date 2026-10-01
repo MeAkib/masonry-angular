@@ -52,7 +52,9 @@
             ],
             "styles": [
               "projects/demo/src/styles.css"
-            ]
+            ],
+            "server": "projects/demo/src/main.server.ts",
+            "outputMode": "static"
           },
           "configurations": {
             "production": {

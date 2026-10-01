@@ -1,10 +1,16 @@
 import type { Routes } from '@angular/router';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'gallery' },
+  /*
+   * The gallery is the home page, not a redirect to one. `redirectTo` prerenders
+   * as a meta-refresh stub with no content and no social tags, which would leave
+   * the site's main URL with no preview card and nothing for a crawler to read.
+   * `/gallery` is kept working by a permanent redirect in vercel.json.
+   */
   {
-    path: 'gallery',
-    title: 'Gallery — masonry-angular',
+    path: '',
+    pathMatch: 'full',
+    title: 'masonry-angular — cascading grid layout for Angular',
     loadComponent: () => import('./examples/gallery').then((m) => m.GalleryExample),
   },
   {
@@ -27,5 +33,5 @@ export const routes: Routes = [
     title: 'Performance — masonry-angular',
     loadComponent: () => import('./examples/performance').then((m) => m.PerformanceExample),
   },
-  { path: '**', redirectTo: 'gallery' },
+  { path: '**', redirectTo: '' },
 ];
