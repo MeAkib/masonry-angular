@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "ng": "ng",
     "prebuild": "node scripts/sync-llms.mjs",
     "start": "npm run build:lib && ng serve demo",
@@ -25,7 +26,8 @@
     "verify:compat": "node scripts/verify-compat.mjs",
     "verify:docs": "npm run build:lib && node scripts/verify-docs.mjs",
     "postbuild": "node scripts/make-sitemap.mjs && node scripts/inject-meta.mjs",
-    "verify:deps": "npm run build:lib && node scripts/verify-deps.mjs"
+    "verify:deps": "npm run build:lib && node scripts/verify-deps.mjs",
+    "verify:lockfile": "node scripts/verify-lockfile.mjs"
   },
   "packageManager": "npm@11.12.1",
   "engines": {

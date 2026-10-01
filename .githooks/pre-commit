@@ -1,0 +1,47 @@
+#!/bin/sh
+#
+# Runs before every commit. Kept under a couple of seconds, because a hook that
+# is slow is a hook people disable.
+#
+# Two checks, both chosen because they fail *later* in a way that does not look
+# like their cause:
+#
+#   Formatting — CI runs `prettier --check` and fails the whole run on a stray
+#   space, several minutes after the push.
+#
+#   Lock file — if package.json and package-lock.json disagree, `npm ci` refuses
+#   to install, so every CI job and every Vercel deploy dies at the install step
+#   before anything is tested. The error talks about the lock file, not about
+#   the dependency somebody added.
+#
+# Everything slower lives in .githooks/pre-push and in CI.
+#
+# To skip deliberately:  git commit --no-verify
+
+set -e
+
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+
+# --- Formatting, on the staged files only ------------------------------------
+#
+# Note this checks the file on disk, not the staged blob. If you stage a tidy
+# version and then make a mess without staging it, this complains about the mess
+# — which is the more useful of the two answers.
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR -- 'projects/***' |
+  grep -E '\.(ts|html|css|json)$' || true)
+
+if [ -n "$staged" ]; then
+  # `xargs -d` is GNU-only; macOS ships BSD xargs, where it does not exist.
+  # NUL separation is the portable way to survive spaces in file names.
+  if ! printf '%s\n' "$staged" | tr '\n' '\0' | xargs -0 npx --no-install prettier --check; then
+    echo
+    echo "  Fix it with:  npm run format"
+    exit 1
+  fi
+fi
+
+# --- package.json and package-lock.json must agree ---------------------------
+
+node scripts/verify-lockfile.mjs
