@@ -169,10 +169,12 @@ Tests, unlike the demo, run against the sources directly, so `npm test` needs no
 | `npm run verify:native` | Check the native CSS path in a real Chromium (see [Testing](#testing)).                  |
 | `npm run verify:ssr`  | Render on a real server with no browser globals (see [Testing](#testing)).                 |
 | `npm run size:features` | Measure what each feature costs, by ablation.                                             |
+| `npm run size:app`    | Build an app with and without the grid, and subtract. The number to quote.                  |
 | `npm run ng`          | The raw Angular CLI, for anything the scripts above do not cover.                          |
 
-Two numbers worth knowing, both produced by scripts above rather than estimated: the production
-bundle is **8.6 KB gzipped** (`npm run size`), and the suite is **185 tests** (`npm test`).
+Three numbers worth knowing, all produced by scripts above rather than estimated: the library's own
+code is **8.6 KB gzipped** (`npm run size`), it adds **10.4 KB gzipped** to an application build
+(`npm run size:app`, which is the number to quote), and the suite is **185 tests** (`npm test`).
 
 ---
 

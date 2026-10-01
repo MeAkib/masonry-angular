@@ -17,7 +17,7 @@ Angular workspace for the **masonry-angular** library and its example app.
 | starter | `examples/stackblitz` | A minimal example that installs the package from npm. |
 
 Cascading grid layout with its own solver — no `masonry-layout`, no jQuery, no runtime dependencies.
-Signal-based, zoneless, SSR-safe, 8.6 KB gzipped, and works on Angular 17.1 through 22. With `native: true` it hands the whole layout
+Signal-based, zoneless, SSR-safe, about 10.4 KB gzipped added to your bundle, and works on Angular 17.1 through 22. With `native: true` it hands the whole layout
 to browsers that ship `display: grid-lanes`.
 
 ```bash

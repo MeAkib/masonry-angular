@@ -1,6 +1,6 @@
 {
   "name": "masonry-angular",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Zero-dependency masonry layout for Angular. Signal-based, zoneless, SSR-safe.",
   "keywords": [
     "angular",

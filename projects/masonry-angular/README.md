@@ -1,7 +1,7 @@
 # masonry-angular
 
 Cascading grid ("masonry") layout for Angular. Its own solver — no `masonry-layout`, no jQuery, no
-`imagesLoaded`, no runtime dependencies at all. 8.6 KB gzipped.
+`imagesLoaded`, no runtime dependencies at all. About 10.4 KB gzipped once it is in your bundle.
 
 For photo galleries, and for dashboards of charts and KPI cards — anywhere a CSS Grid leaves empty
 space under the short items.

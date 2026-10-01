@@ -519,9 +519,29 @@ allocates one small object per pass and nothing else.
 
 ## Bundle size
 
-Measured with `npm run size`: each library bundled with esbuild, minified, with `@angular/*`
-external, reported as gzip — what a CDN actually sends. The production row is built with
-`ngDevMode: false`, the substitution an Angular production build makes.
+Three different numbers get called "the size of a library", and for an Angular library they differ
+by a lot. This section gives all three rather than quoting the flattering one.
+
+**What it adds to your application: about 10.4 KB gzipped.** This is the number to budget against.
+`npm run size:app` builds the same application twice — once plain, once with `<masonry-grid>` and
+`[masonryGridItem]` — and subtracts. The baseline already uses signals, `computed`, `effect`,
+`input`/`output`, `@for`, `@if`, `OnPush`, `afterNextRender`, `NgZone` and `DestroyRef`, so Angular's
+own cost for those is not charged to the grid. Adding every directive and `provideNgMasonryGrid` as
+well takes it to 10.6 KB.
+
+**What the library's own code weighs: 8.6 KB gzipped.** `npm run size` bundles the published FESM
+with esbuild, minified, `@angular/*` external, reported as gzip — what a CDN sends. That is the right
+unit for comparing against other layout libraries, which is what the table below does. It is smaller
+than what your build pays, because Angular libraries publish in *partial* compilation: directive and
+component definitions are placeholders that the Angular linker expands during the consuming build.
+Releases up to 0.0.2 quoted this number as the headline, which was the wrong unit for a README.
+
+**What Bundlephobia reports: disregard it for any Angular library.** It does not run the linker
+either, which is why it shows a flat ~10.6 KB for every single export — including ones that are forty
+lines of arithmetic.
+
+The comparison below is in own-code units for every row, so it is like for like. The production row
+is built with `ngDevMode: false`, the substitution an Angular production build makes.
 
 | Library                    | Own code   | Runtime deps | Total      |
 | -------------------------- | ---------- | ------------ | ---------- |
@@ -583,7 +603,7 @@ zoneless scheduling, a single shared `ResizeObserver`, transform-based positioni
 correctness with no `reloadItems()`, server rendering that produces a usable page, and the handoff to
 native CSS masonry — none of which the wrapped stack can express at any size.
 
-The honest summary: if 8.6 KB is too much for your budget, a CSS-columns component is 1 KB and will
+The honest summary: if 10 KB is too much for your budget, a CSS-columns component is 1 KB and will
 serve you well. If you are choosing between this and a `masonry-layout` wrapper, the size is a wash
 and the difference is everything else.
 
