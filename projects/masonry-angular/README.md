@@ -25,6 +25,9 @@ the DOM and re-lays out on its own. There is no `reloadItems()` to remember.
 - **Fast.** One shared `ResizeObserver`, one frame per burst of changes, transform-based positioning.
   The solver places 10,000 items in 0.16 ms.
 
+**[See it running](https://masonry-angular.vercel.app)** — five live examples: a photo gallery, column spans and stamps,
+a dashboard, adding and removing items, and 1,000 items at once. Each one shows its source.
+
 **[Try it in StackBlitz](https://stackblitz.com/github/MeAkib/masonry-angular/tree/main/examples/stackblitz)** —
 a running grid in your browser, no setup.
 

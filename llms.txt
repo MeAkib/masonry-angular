@@ -92,6 +92,7 @@ Under native layout the browser owns packing, so stamps and `masonryIgnore` have
 
 ## Examples
 
+- [Live demo](https://masonry-angular.vercel.app): Five worked examples — gallery, spans and stamps, dashboard, dynamic items, 1,000 items — each showing its source.
 - [Runnable starter](https://stackblitz.com/github/MeAkib/masonry-angular/tree/main/examples/stackblitz): A StackBlitz project that installs the published package from npm.
 - [Starter source](https://raw.githubusercontent.com/MeAkib/masonry-angular/main/examples/stackblitz/src/main.ts): The same example as a single file — responsive columns, spans, add/remove/reorder.
 
