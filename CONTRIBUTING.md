@@ -171,7 +171,7 @@ Tests, unlike the demo, run against the sources directly, so `npm test` needs no
 | `npm run size:features` | Measure what each feature costs, by ablation.                                             |
 | `npm run size:app`    | Build an app with and without the grid, and subtract. The number to quote.                  |
 | `npm run verify:prerender` | Every route ships its text as HTML, and the sitemap matches.                          |
-| `npm run og`          | Redraw the social preview card. Run it when the wording or the numbers change.             |
+| `npm run og`          | Redraw the social card and the dev.to / Medium covers from one set of words.               |
 | `npm run verify:lockfile` | package.json and package-lock.json agree, so `npm ci` will not refuse to install.      |
 | `npm run ng`          | The raw Angular CLI, for anything the scripts above do not cover.                          |
 
